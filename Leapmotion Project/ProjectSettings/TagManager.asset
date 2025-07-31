@@ -5,6 +5,12 @@ TagManager:
   serializedVersion: 3
   tags:
   - Stone
+  - MineralBlock
+  - OuterLayer
+  - GemLayer
+  - Hammer
+  - Chisel
+  - StoneChunk
   layers:
   - Default
   - TransparentFX
@@ -16,8 +22,8 @@ TagManager:
   - 
   - PhysicalHands
   - PhysicalHandsReset
-  - 
-  - 
+  - Mineral
+  - Tools
   - 
   - 
   - 

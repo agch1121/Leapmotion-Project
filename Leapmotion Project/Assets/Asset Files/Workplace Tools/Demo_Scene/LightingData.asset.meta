@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: b6b27edfe83f7944099b14c70e7f86e2
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 112000000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86242
+  packageName: Workplace Tools
+  packageVersion: 1.2
+  assetPath: Assets/Workplace Tools/Demo_Scene/LightingData.asset
+  uploadId: 729009

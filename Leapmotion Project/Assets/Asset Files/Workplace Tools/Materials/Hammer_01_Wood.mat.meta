@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: d65bb764f01933a409415238dfaf22fe
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86242
+  packageName: Workplace Tools
+  packageVersion: 1.2
+  assetPath: Assets/Workplace Tools/Materials/Hammer_01_Wood.mat
+  uploadId: 729009

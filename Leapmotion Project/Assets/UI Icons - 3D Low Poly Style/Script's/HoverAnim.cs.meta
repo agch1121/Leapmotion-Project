@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: d77cd9933c7cb6140ba774d1ca30f092
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 244283
+  packageName: UI Icons - 3D Low Poly Style
+  packageVersion: 1.0
+  assetPath: Assets/UI Icons - 3D Low Poly Style/Script's/HoverAnim.cs
+  uploadId: 572340

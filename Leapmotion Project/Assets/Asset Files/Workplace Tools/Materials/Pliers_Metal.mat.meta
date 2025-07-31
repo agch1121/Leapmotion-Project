@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 3bce78631b295fa47ac2c7767127e39b
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86242
+  packageName: Workplace Tools
+  packageVersion: 1.2
+  assetPath: Assets/Workplace Tools/Materials/Pliers_Metal.mat
+  uploadId: 729009

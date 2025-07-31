@@ -1,0 +1,29 @@
+fileFormatVersion: 2
+guid: 61e2e2d13c56ca0498eae3687698b0d6
+AudioImporter:
+  externalObjects: {}
+  serializedVersion: 6
+  defaultSettings:
+    loadType: 0
+    sampleRateSetting: 0
+    sampleRateOverride: 44100
+    compressionFormat: 1
+    quality: 1
+    conversionMode: 0
+  platformSettingOverrides: {}
+  forceToMono: 0
+  normalize: 1
+  preloadAudioData: 1
+  loadInBackground: 0
+  ambisonic: 0
+  3D: 1
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 244283
+  packageName: UI Icons - 3D Low Poly Style
+  packageVersion: 1.0
+  assetPath: Assets/UI Icons - 3D Low Poly Style/Sounds/Music/669479__garuda1982__electric-guitar-melody-5.wav
+  uploadId: 572340

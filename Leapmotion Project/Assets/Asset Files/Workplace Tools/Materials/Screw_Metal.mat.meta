@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: fd7f36f5310242e4fa8cd02ab8f0a067
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86242
+  packageName: Workplace Tools
+  packageVersion: 1.2
+  assetPath: Assets/Workplace Tools/Materials/Screw_Metal.mat
+  uploadId: 729009
