@@ -153,6 +153,7 @@ public class GemProtectionSystem : MonoBehaviour
         if (gem.currentCondition <= 0f && !gem.isDestroyed)
         {
             gem.isDestroyed = true;
+            Debug.Log($"{gem.gemName} 완전히 파괴됨!");
             OnGemDestroyed(gem);
         }
     }
@@ -211,6 +212,7 @@ public class GemProtectionSystem : MonoBehaviour
         // 파괴 효과
         StartCoroutine(CreateDestructionEffect(gem.gemObject.transform.position));
 
+        
         // 여기에 점수 감점이나 게임 오버 로직 추가 가능
         // 예: ScoreManager.Instance.OnGemDestroyed(gem);
     }
@@ -231,7 +233,7 @@ public class GemProtectionSystem : MonoBehaviour
 
         // 확대 애니메이션
         float elapsed = 0f;
-        float duration = 0.5f;
+        float duration = 1f;
         Vector3 startScale = shield.transform.localScale;
         Vector3 endScale = startScale * 2f;
 

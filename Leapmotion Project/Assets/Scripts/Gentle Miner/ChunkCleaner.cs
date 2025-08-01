@@ -98,18 +98,6 @@ public class ChunkCleaner : MonoBehaviour
             }
         }
 
-        // 2. SafeChunkRemoval 컴포넌트가 있는 것들
-        SafeChunkRemoval[] safeRemovals = FindObjectsByType<SafeChunkRemoval>(FindObjectsSortMode.None);
-        foreach (SafeChunkRemoval removal in safeRemovals)
-        {
-            if (removal != null && removal.gameObject != null &&
-                !removal.transform.IsChildOf(transform) &&
-                !chunkObjects.Contains(removal.gameObject))
-            {
-                chunkObjects.Add(removal.gameObject);
-            }
-        }
-
         // 3. 특정 태그가 있는 것들 (안전함)
         GameObject[] stoneChunks = GameObject.FindGameObjectsWithTag("StoneChunk");
         foreach (GameObject obj in stoneChunks)

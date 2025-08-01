@@ -1,31 +1,47 @@
 using LibreFracture;
 using UnityEngine;
 using System.Collections.Generic;
+using System.Reflection;
 
 /// <summary>
-/// 정확한 조각 개수 추적 시스템
+/// Progress 계산 문제 해결된 ChunkCounter
+/// 비활성화된 조각도 제거된 것으로 카운트
 /// </summary>
 public class ChunkCounter : MonoBehaviour
 {
     [Header("카운터 상태")]
     [SerializeField] private int totalChunksAtStart = 0;
     [SerializeField] private int currentActiveChunks = 0;
-    [SerializeField] private int destroyedChunks = 0;
+    [SerializeField] private int currentRemovedChunks = 0;
     [SerializeField] private float miningProgress = 0f;
 
     [Header("디버그")]
     public bool enableDebugLogs = true;
-    public bool autoRefreshCount = true; // 자동으로 개수 갱신
-    public float refreshInterval = 1f; // 갱신 간격 (초)
+    public bool enableProgressDebug = true;
+    public bool autoRefreshCount = true;
+    public float refreshInterval = 0.5f;
 
     private HashSet<ChunkNode> trackedChunks = new HashSet<ChunkNode>();
-    private HashSet<ChunkNode> destroyedChunksList = new HashSet<ChunkNode>();
+    private FieldInfo stateFieldInfo;
 
-    // 이벤트
-    public System.Action<int, int, float> OnChunkCountChanged; // (현재개수, 파괴개수, 진행률)
+    // 이벤트 - 매개변수 순서: (활성조각수, 제거된조각수, 진행률)
+    public System.Action<int, int, float> OnChunkCountChanged;
+
+    // 프로퍼티
+    public int TotalChunksAtStart => totalChunksAtStart;
+    public int CurrentActiveChunks => currentActiveChunks;
+    public int CurrentRemovedChunks => currentRemovedChunks;
+    public float MiningProgress => miningProgress;
+
+    // 기존 호환성을 위한 프로퍼티들
+    public int CurrentConnectedChunks => currentActiveChunks;
+    public int CurrentDetachedChunks => currentRemovedChunks;
+    public int DestroyedChunks => currentRemovedChunks;
+    public bool IsFullyMined => currentActiveChunks <= 0;
 
     void Start()
     {
+        InitializeReflection();
         InitializeCounter();
 
         if (autoRefreshCount)
@@ -34,193 +50,234 @@ public class ChunkCounter : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 카운터 초기화
-    /// </summary>
+    void InitializeReflection()
+    {
+        try
+        {
+            System.Type chunkNodeType = typeof(ChunkNode);
+            stateFieldInfo = chunkNodeType.GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
+
+            if (stateFieldInfo == null)
+            {
+                Debug.LogError("ChunkNode의 _state 필드를 찾을 수 없습니다!");
+            }
+            else if (enableDebugLogs)
+            {
+                Debug.Log("ChunkNode._state 필드 접근 성공!");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Reflection 초기화 실패: {e.Message}");
+        }
+    }
+
+    ChunkNode.ChunkState GetChunkState(ChunkNode chunk)
+    {
+        if (stateFieldInfo == null || chunk == null)
+        {
+            return ChunkNode.ChunkState.Connected;
+        }
+
+        try
+        {
+            object stateValue = stateFieldInfo.GetValue(chunk);
+            return (ChunkNode.ChunkState)stateValue;
+        }
+        catch (System.Exception e)
+        {
+            if (enableDebugLogs)
+                Debug.LogWarning($"상태 조회 실패 {chunk.name}: {e.Message}");
+            return ChunkNode.ChunkState.Connected;
+        }
+    }
+
     void InitializeCounter()
     {
         RefreshChunkCount();
-        totalChunksAtStart = currentActiveChunks;
-        destroyedChunks = 0;
+        totalChunksAtStart = currentActiveChunks + currentRemovedChunks;
+
+        // 초기화 시점에서는 제거된 조각이 없으므로 progress = 0
         miningProgress = 0f;
 
-        if (enableDebugLogs)
-            Debug.Log($"ChunkCounter 초기화: 총 {totalChunksAtStart}개 조각 발견");
+        if (enableProgressDebug)
+        {
+            Debug.Log($"=== ChunkCounter 초기화 ===");
+            Debug.Log($"시작 시 총 조각: {totalChunksAtStart}개");
+            Debug.Log($"활성 조각: {currentActiveChunks}개");
+            Debug.Log($"제거된 조각: {currentRemovedChunks}개");
+            Debug.Log($"초기 Progress: {miningProgress * 100f:F1}%");
+            Debug.Log("===============================");
+        }
     }
 
-    /// <summary>
-    /// 실시간으로 조각 개수 갱신
-    /// </summary>
     public void RefreshChunkCount()
     {
-        // 이전 추적 상태 저장
-        int previousActiveCount = currentActiveChunks;
+        int previousActive = currentActiveChunks;
+        int previousRemoved = currentRemovedChunks;
+        float previousProgress = miningProgress;
 
-        // 현재 활성 조각들 찾기
-        ChunkNode[] allChunks = GetComponentsInChildren<ChunkNode>();
-        HashSet<ChunkNode> currentValidChunks = new HashSet<ChunkNode>();
+        currentActiveChunks = 0;
+        currentRemovedChunks = 0;
+
+        // 모든 ChunkNode 찾기 (자식 포함)
+        ChunkNode[] allChunks = GetComponentsInChildren<ChunkNode>(true); // includeInactive = true
 
         foreach (ChunkNode chunk in allChunks)
         {
-            if (IsChunkValid(chunk))
+            if (chunk != null && chunk.gameObject != null)
             {
-                currentValidChunks.Add(chunk);
+                // 활성화되어 있고 실제로 연결된 상태인 조각만 활성으로 카운트
+                if (chunk.gameObject.activeInHierarchy && chunk.enabled)
+                {
+                    ChunkNode.ChunkState state = GetChunkState(chunk);
+
+                    // Detached가 아닌 상태는 모두 활성으로 카운트
+                    if (state != ChunkNode.ChunkState.Detached)
+                    {
+                        currentActiveChunks++;
+                    }
+                    else
+                    {
+                        currentRemovedChunks++;
+                    }
+                }
+                else
+                {
+                    // 비활성화되었거나 enabled가 false인 조각은 제거된 것으로 카운트
+                    currentRemovedChunks++;
+                }
             }
         }
 
-        // 새롭게 파괴된 조각들 감지
-        foreach (ChunkNode trackedChunk in trackedChunks)
-        {
-            if (!currentValidChunks.Contains(trackedChunk) && !destroyedChunksList.Contains(trackedChunk))
-            {
-                // 이 조각이 파괴됨
-                destroyedChunksList.Add(trackedChunk);
-                OnChunkDestroyed(trackedChunk);
-            }
-        }
-
-        // 추적 리스트 업데이트
-        trackedChunks = currentValidChunks;
-        currentActiveChunks = trackedChunks.Count;
-
-        // 진행률 계산
+        // Progress 계산
         if (totalChunksAtStart > 0)
         {
-            destroyedChunks = totalChunksAtStart - currentActiveChunks;
-            miningProgress = (float)destroyedChunks / totalChunksAtStart;
+            miningProgress = (float)currentRemovedChunks / totalChunksAtStart;
         }
-
-        // 변화가 있을 때만 로그 출력
-        if (previousActiveCount != currentActiveChunks && enableDebugLogs)
+        else
         {
-            Debug.Log($"조각 상태 갱신: {currentActiveChunks}개 남음 ({destroyedChunks}개 파괴됨, {miningProgress * 100f:F1}% 진행)");
+            miningProgress = 0f;
         }
 
-        // 이벤트 발생
-        OnChunkCountChanged?.Invoke(currentActiveChunks, destroyedChunks, miningProgress);
-    }
-
-    /// <summary>
-    /// 조각이 유효한지 확인
-    /// </summary>
-    bool IsChunkValid(ChunkNode chunk)
-    {
-        if (chunk == null) return false;
-        if (chunk.gameObject == null) return false;
-        if (!chunk.gameObject.activeInHierarchy) return false;
-        if (!chunk.enabled) return false;
-
-        // Rigidbody 상태 확인
-        try
+        // 변화가 있을 때만 로그 출력 및 이벤트 발생
+        if (previousActive != currentActiveChunks || previousRemoved != currentRemovedChunks)
         {
-            Rigidbody rb = chunk.GetComponent<Rigidbody>();
-            if (rb == null) return false;
+            if (enableProgressDebug)
+            {
+                Debug.Log($"=== Progress 업데이트 ===");
+                Debug.Log($"활성 조각: {currentActiveChunks}개 (이전: {previousActive}개)");
+                Debug.Log($"제거된 조각: {currentRemovedChunks}개 (이전: {previousRemoved}개)");
+                Debug.Log($"Progress: {miningProgress * 100f:F1}% (이전: {previousProgress * 100f:F1}%)");
+                Debug.Log("========================");
+            }
+            else if (enableDebugLogs)
+            {
+                Debug.Log($"조각 상태: 활성 {currentActiveChunks}개, 제거 {currentRemovedChunks}개 ({miningProgress * 100f:F1}% 진행)");
+            }
 
-            // Rigidbody가 실제로 접근 가능한지 테스트
-            _ = rb.mass; // 간단한 접근 테스트
-            return true;
+            // 이벤트 발생 (활성조각수, 제거된조각수, 진행률)
+            OnChunkCountChanged?.Invoke(currentActiveChunks, currentRemovedChunks, miningProgress);
         }
-        catch
+    }
+
+    /// <summary>
+    /// 상태별 조각 개수 반환
+    /// </summary>
+    public (int active, int removed, int total) GetChunkCounts()
+    {
+        return (currentActiveChunks, currentRemovedChunks, totalChunksAtStart);
+    }
+
+    /// <summary>
+    /// 상세 상태별 조각 개수 (디버그용)
+    /// </summary>
+    public (int connected, int anchored, int broken, int detached, int disabled) GetDetailedChunkCount()
+    {
+        int connected = 0, anchored = 0, broken = 0, detached = 0, disabled = 0;
+
+        ChunkNode[] allChunks = GetComponentsInChildren<ChunkNode>(true);
+
+        foreach (ChunkNode chunk in allChunks)
         {
-            return false;
+            if (chunk != null && chunk.gameObject != null)
+            {
+                if (!chunk.gameObject.activeInHierarchy || !chunk.enabled)
+                {
+                    disabled++;
+                }
+                else
+                {
+                    ChunkNode.ChunkState state = GetChunkState(chunk);
+                    switch (state)
+                    {
+                        case ChunkNode.ChunkState.Connected: connected++; break;
+                        case ChunkNode.ChunkState.Anchored: anchored++; break;
+                        case ChunkNode.ChunkState.Broken: broken++; break;
+                        case ChunkNode.ChunkState.Detached: detached++; break;
+                    }
+                }
+            }
         }
+
+        return (connected, anchored, broken, detached, disabled);
     }
 
+    public float GetMiningProgressPercent() => miningProgress * 100f;
+    public bool IsMiningProgressOver(float percentage) => GetMiningProgressPercent() >= percentage;
+    public bool IsGemExposed() => miningProgress >= 0.7f;
+
     /// <summary>
-    /// 조각이 파괴되었을 때 호출
+    /// 즉시 Progress 강제 업데이트 (테스트용)
     /// </summary>
-    void OnChunkDestroyed(ChunkNode chunk)
+    [ContextMenu("즉시 Progress 업데이트")]
+    public void ForceRefresh()
     {
-        if (enableDebugLogs)
-            Debug.Log($"조각 파괴 감지: {(chunk != null ? chunk.name : "Unknown")}");
-
-        // 보석 보호 시스템과 연동 가능
-        GemProtectionSystem gemSystem = GetComponent<GemProtectionSystem>();
-        if (gemSystem != null && chunk != null)
-        {
-            // 파괴된 조각 위치에서 보석까지의 거리 체크
-            // (필요에 따라 추가 로직 구현 가능)
-        }
+        RefreshChunkCount();
+        Debug.Log($"강제 업데이트 완료! Progress: {GetMiningProgressPercent():F1}%");
     }
 
-    /// <summary>
-    /// 수동으로 조각이 제거될 것을 미리 알림
-    /// </summary>
-    public void NotifyChunkWillBeDestroyed(ChunkNode chunk)
-    {
-        if (chunk != null && trackedChunks.Contains(chunk))
-        {
-            destroyedChunksList.Add(chunk);
-            trackedChunks.Remove(chunk);
-
-            currentActiveChunks = trackedChunks.Count;
-            destroyedChunks = totalChunksAtStart - currentActiveChunks;
-            miningProgress = (float)destroyedChunks / totalChunksAtStart;
-
-            if (enableDebugLogs)
-                Debug.Log($"조각 제거 예고: {chunk.name} (남은 조각: {currentActiveChunks}개)");
-
-            OnChunkCountChanged?.Invoke(currentActiveChunks, destroyedChunks, miningProgress);
-        }
-    }
-
-    /// <summary>
-    /// Getter 프로퍼티들
-    /// </summary>
-    public int TotalChunksAtStart => totalChunksAtStart;
-    public int CurrentActiveChunks => currentActiveChunks;
-    public int DestroyedChunks => destroyedChunks;
-    public float MiningProgress => miningProgress;
-    public bool IsFullyMined => currentActiveChunks <= 0;
-
-    /// <summary>
-    /// 진행률을 퍼센트로 반환
-    /// </summary>
-    public float GetMiningProgressPercent()
-    {
-        return miningProgress * 100f;
-    }
-
-    /// <summary>
-    /// 특정 퍼센트 이상 채굴되었는지 확인
-    /// </summary>
-    public bool IsMiningProgressOver(float percentage)
-    {
-        return GetMiningProgressPercent() >= percentage;
-    }
-
-    /// <summary>
-    /// 디버그용: 상세 상태 출력
-    /// </summary>
-    [ContextMenu("상세 상태 출력")]
-    public void PrintDetailedStatus()
-    {
-        Debug.Log("=== ChunkCounter 상태 ===");
-        Debug.Log($"시작 시 총 조각: {totalChunksAtStart}개");
-        Debug.Log($"현재 활성 조각: {currentActiveChunks}개");
-        Debug.Log($"파괴된 조각: {destroyedChunks}개");
-        Debug.Log($"채굴 진행률: {GetMiningProgressPercent():F1}%");
-        Debug.Log($"완전 채굴 여부: {(IsFullyMined ? "예" : "아니오")}");
-        Debug.Log($"추적 중인 조각: {trackedChunks.Count}개");
-        Debug.Log($"파괴 목록 크기: {destroyedChunksList.Count}개");
-        Debug.Log("========================");
-    }
-
-    /// <summary>
-    /// 강제로 카운터 리셋
-    /// </summary>
     [ContextMenu("카운터 리셋")]
     public void ResetCounter()
     {
         trackedChunks.Clear();
-        destroyedChunksList.Clear();
         InitializeCounter();
         Debug.Log("ChunkCounter 리셋 완료!");
     }
 
+    [ContextMenu("상세 상태 출력")]
+    public void PrintDetailedStatus()
+    {
+        var (connected, anchored, broken, detached, disabled) = GetDetailedChunkCount();
+
+        Debug.Log("=== ChunkCounter 상세 상태 ===");
+        Debug.Log($"시작 시 총 조각: {totalChunksAtStart}개");
+        Debug.Log($"현재 활성 조각: {currentActiveChunks}개");
+        Debug.Log($"제거된 조각: {currentRemovedChunks}개");
+        Debug.Log($"--- 상세 분류 ---");
+        Debug.Log($"연결된 조각 (Connected): {connected}개");
+        Debug.Log($"고정된 조각 (Anchored): {anchored}개");
+        Debug.Log($"손상된 조각 (Broken): {broken}개");
+        Debug.Log($"분리된 조각 (Detached): {detached}개");
+        Debug.Log($"비활성화된 조각 (Disabled): {disabled}개");
+        Debug.Log($"채굴 진행률: {GetMiningProgressPercent():F1}%");
+        Debug.Log($"보석 노출 여부: {(IsGemExposed() ? "예" : "아니오")}");
+        Debug.Log($"완전 채굴 여부: {(IsFullyMined ? "예" : "아니오")}");
+        Debug.Log("==============================");
+    }
+
+    // 기존 호환성을 위한 함수
+    public void NotifyChunkWillBeDestroyed(ChunkNode chunk)
+    {
+        // 이제는 자동으로 감지되므로 바로 갱신만 함
+        if (enableDebugLogs)
+        {
+            Debug.Log($"조각 제거 예정: {chunk?.name} - 자동 감지로 Progress 업데이트됨");
+        }
+    }
+
     void OnDestroy()
     {
-        // 자동 갱신 중지
         if (autoRefreshCount)
         {
             CancelInvoke(nameof(RefreshChunkCount));

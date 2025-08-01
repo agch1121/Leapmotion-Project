@@ -17,6 +17,9 @@ public class Test : MonoBehaviour
     [Range(1f, 50f)]
     public float miningForceIntensity = 20f; // 채굴 강도 (보석 보호 시스템에서 사용)
 
+    [Header("보석 연출 시스템")]
+    public GemRevealSystem gemRevealSystem; // GemRevealSystem 참조
+
     private ChunkGraphManager chunkGraphManager;
     private AudioSource audioSource;
     private ChunkNode[] allChunks; // 모든 조각 캐시
@@ -48,7 +51,6 @@ public class Test : MonoBehaviour
         if (chunkCounter == null)
         {
             chunkCounter = gameObject.AddComponent<ChunkCounter>();
-            Debug.Log("ChunkCounter 자동 추가됨");
         }
 
         // 카운터 이벤트 구독
@@ -61,6 +63,14 @@ public class Test : MonoBehaviour
             audioSource = gameObject.AddComponent<AudioSource>();
         }
 
+        if (gemRevealSystem == null)
+        {
+            gemRevealSystem = FindFirstObjectByType<GemRevealSystem>();
+            if (gemRevealSystem == null)
+            {
+                Debug.LogWarning("GemRevealSystem이 없습니다. 보석 연출이 비활성화됩니다.");
+            }
+        }
         // 모든 조각들 캐시 (성능 향상)
         RefreshChunkCache();
 
@@ -75,14 +85,13 @@ public class Test : MonoBehaviour
         ChunkNode[] foundChunks = GetComponentsInChildren<ChunkNode>();
         foreach (ChunkNode chunk in foundChunks)
         {
-            if (chunk != null && chunk.gameObject != null && chunk.IsSafeToRemove())
+            if (chunk != null && chunk.gameObject != null)
             {
                 validChunks.Add(chunk);
             }
         }
 
         allChunks = validChunks.ToArray();
-        Debug.Log($"조각 캐시 갱신: {allChunks.Length}개 (유효한 조각만)");
     }
 
     void Update()
@@ -105,12 +114,6 @@ public class Test : MonoBehaviour
             gemProtectionSystem.PrintGemStatus();
         }
 
-        // C키로 정확한 조각 개수 확인
-        if (Input.GetKeyDown(KeyCode.C) && chunkCounter != null)
-        {
-            chunkCounter.PrintDetailedStatus();
-        }
-
         // X키로 즉시 조각 정리
         if (Input.GetKeyDown(KeyCode.X))
         {
@@ -128,7 +131,6 @@ public class Test : MonoBehaviour
             // 클릭된 조각이 이 오브젝트의 일부인지 확인
             if (hit.collider.transform.IsChildOf(transform))
             {
-                Debug.Log($"채굴 지점: {hit.collider.name}, 위치: {hit.point}");
                 MineAtPoint(hit.point, hit.normal);
             }
         }
@@ -155,8 +157,8 @@ public class Test : MonoBehaviour
         var activeChunks = System.Array.FindAll(allChunks, chunk =>
             chunk != null &&
             chunk.gameObject != null &&
-            chunk.gameObject.activeInHierarchy &&
-            chunk.IsSafeToRemove());
+            chunk.gameObject.activeInHierarchy
+        );
 
         if (activeChunks.Length == 0)
         {
@@ -191,39 +193,62 @@ public class Test : MonoBehaviour
                 chunksRemoved++;
             }
         }
-
-        Debug.Log($"조각 {chunksRemoved}개 채굴됨. 채굴 상태는 ChunkCounter에서 자동 추적됩니다.");
-
-        // ChunkCounter가 자동으로 진행률을 추적하므로 별도 체크 불필요
     }
 
     void RemoveChunkGently(ChunkNode chunk, Vector3 miningPoint, Vector3 surfaceNormal)
     {
-        if (chunk == null) return;
+        if (chunk == null || chunk.gameObject == null) return;
 
-        // 안전한 제거를 위한 상태 확인
-        if (!chunk.IsSafeToRemove())
-        {
-            Debug.LogWarning($"ChunkNode {chunk.name}이 안전하지 않은 상태입니다. 제거를 건너뜁니다.");
-            return;
-        }
+        // 간단하게 연결만 끊기 - 삭제하지 않음
+        BreakChunkConnections(chunk);
 
-        // 카운터에 제거 예고 (정확한 카운팅을 위해)
-        if (chunkCounter != null)
-        {
-            chunkCounter.NotifyChunkWillBeDestroyed(chunk);
-        }
+        // 부드러운 물리 힘 적용
+        ApplyGentleForce(chunk, surfaceNormal);
 
-        // 조각 떨어지는 소리 (지연)
+        // 조각 떨어지는 소리
         if (chunkFallSounds != null && chunkFallSounds.Length > 0)
         {
             StartCoroutine(PlayDelayedFallSound(Random.Range(0.2f, 0.8f)));
         }
+    }
 
-        // SafeChunkRemoval을 사용한 안전한 제거
-        SafeChunkRemoval.RemoveChunkSafely(chunk, miningPoint, surfaceNormal, gentleForce);
+    /// <summary>
+    /// 연결 끊기만 하고 삭제하지 않음
+    /// </summary>
+    void BreakChunkConnections(ChunkNode chunk)
+    {
+        if (chunk == null) return;
 
-        Debug.Log($"조각 안전 제거 시작: {chunk.name}");
+        // 모든 Joint 제거
+        Joint[] joints = chunk.GetComponents<Joint>();
+        foreach (Joint joint in joints)
+        {
+            if (joint != null)
+                Destroy(joint);
+        }
+
+        FixedJoint[] fixedJoints = chunk.GetComponents<FixedJoint>();
+        foreach (FixedJoint fixedJoint in fixedJoints)
+        {
+            if (fixedJoint != null)
+                Destroy(fixedJoint);
+        }
+    }
+
+    /// <summary>
+    /// 부드러운 물리 힘 적용
+    /// </summary>
+    void ApplyGentleForce(ChunkNode chunk, Vector3 surfaceNormal)
+    {
+        Rigidbody rb = chunk.GetComponent<Rigidbody>();
+        if (rb == null) return;
+
+        // 자연스러운 방향으로 부드럽게
+        Vector3 gentleDirection = surfaceNormal + Random.insideUnitSphere * 0.3f;
+        gentleDirection.y = Mathf.Max(gentleDirection.y, 0.1f);
+
+        rb.AddForce(gentleDirection * gentleForce, ForceMode.Impulse);
+        rb.AddTorque(Random.insideUnitSphere * gentleForce * 0.2f, ForceMode.Impulse);
     }
 
     void CreateMiningEffect(Vector3 position, Vector3 normal)
@@ -265,28 +290,94 @@ public class Test : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 조각 개수 변화 이벤트 핸들러
-    /// </summary>
     void OnChunkCountChanged(int activeChunks, int destroyedChunks, float progress)
     {
-        Debug.Log($"채굴 진행 상황: {destroyedChunks}개 파괴됨, {activeChunks}개 남음 ({progress * 100f:F1}%)");
-
-        // 보석 노출 상태 체크 (정확한 진행률 기반)
+        // 중요한 이정표에서만 특별 메시지
         if (progress >= 0.7f && gemProtectionSystem != null)
         {
-            Debug.Log("보석이 노출되었습니다!");
-            gemProtectionSystem.PrintGemStatus();
+            bool gem70Warned = false;
+            if (!gem70Warned)
+            {
+                Debug.Log("💎 보석이 노출되기 시작했습니다! 조심스럽게 채굴하세요.");
+                gemProtectionSystem.PrintGemStatus();
+                gem70Warned = true;
+            }
         }
 
-        // 완전 채굴 체크
+        // 완전 채굴 체크 - 여기서 보석 연출 시작!
         if (activeChunks <= 0)
         {
-            Debug.Log("=== 채굴 완료! 최종 보석 상태 ===");
-            if (gemProtectionSystem != null)
+            Debug.Log("채굴 완료! 보석 결과 연출을 시작합니다.");
+
+            // 최종 보석 점수 계산
+            int finalGemScore = CalculateFinalGemScore();
+
+            // 보석 연출 시작
+            if (gemRevealSystem != null)
             {
-                gemProtectionSystem.PrintGemStatus();
+                gemRevealSystem.StartGemReveal(finalGemScore);
             }
+            else
+            {
+                // GemRevealSystem이 없으면 기존 방식
+                Debug.Log("=== 채굴 완료! 최종 보석 상태 ===");
+                if (gemProtectionSystem != null)
+                {
+                    gemProtectionSystem.PrintGemStatus();
+                }
+            }
+        }
+
+        // 90% 달성 시 알림
+        if (progress >= 0.9f)
+        {
+            bool gem90Warned = false;
+            if (!gem90Warned)
+            {
+                Debug.Log("거의 완성! 마지막 조각들을 조심스럽게 제거하세요.");
+                gem90Warned = true;
+            }
+        }
+    }
+
+    int CalculateFinalGemScore()
+    {
+        if (gemProtectionSystem == null) return 0; // 기본 점수
+
+        int totalScore = 0;
+        int gemCount = 0;
+
+        // 모든 보석의 점수 합산
+        var allGems = gemProtectionSystem.GetAllGems();
+        foreach (var gem in allGems)
+        {
+            int gemScore = gemProtectionSystem.CalculateGemScore(gem);
+            totalScore += gemScore;
+            gemCount++;
+
+            Debug.Log($"보석 '{gem.gemName}': {gemScore}점 ({gem.currentCondition:F1}% 상태)");
+        }
+
+        // 평균 점수 계산
+        int averageScore = gemCount > 0 ? totalScore / gemCount : 0;
+
+        Debug.Log($"최종 점수: {averageScore}점 (총 {gemCount}개 보석)");
+
+        return averageScore;
+    }
+
+    [ContextMenu("보석 연출 테스트")]
+    public void TestGemRevealManual()
+    {
+        if (gemRevealSystem != null)
+        {
+            int testScore = CalculateFinalGemScore();
+            Debug.Log($"보석 연출 테스트 시작! 점수: {testScore}");
+            gemRevealSystem.StartGemReveal(testScore);
+        }
+        else
+        {
+            Debug.LogWarning("GemRevealSystem이 설정되지 않았습니다!");
         }
     }
 
@@ -295,8 +386,6 @@ public class Test : MonoBehaviour
     /// </summary>
     void CleanupAllFallenChunks()
     {
-        Debug.Log("수동 조각 정리 시작...");
-
         // ChunkCleaner가 있으면 사용
         ChunkCleaner cleaner = GetComponent<ChunkCleaner>();
         if (cleaner != null)
@@ -316,18 +405,6 @@ public class Test : MonoBehaviour
                 !chunk.transform.IsChildOf(transform)) // 부모가 광물 블록이 아닌 것들만
             {
                 Destroy(chunk.gameObject);
-                cleanedCount++;
-            }
-        }
-
-        // 2. SafeChunkRemoval 컴포넌트가 있는 것들 정리
-        SafeChunkRemoval[] safeRemovals = FindObjectsByType<SafeChunkRemoval>(FindObjectsSortMode.None);
-        foreach (SafeChunkRemoval removal in safeRemovals)
-        {
-            if (removal != null && removal.gameObject != null &&
-                !removal.transform.IsChildOf(transform))
-            {
-                Destroy(removal.gameObject);
                 cleanedCount++;
             }
         }
@@ -413,8 +490,8 @@ public class Test : MonoBehaviour
         var activeChunks = System.Array.FindAll(allChunks, chunk =>
             chunk != null &&
             chunk.gameObject != null &&
-            chunk.gameObject.activeInHierarchy &&
-            chunk.IsSafeToRemove());
+            chunk.gameObject.activeInHierarchy
+            );
         Debug.Log($"활성 조각 수: {activeChunks.Length} / {allChunks.Length}");
     }
 

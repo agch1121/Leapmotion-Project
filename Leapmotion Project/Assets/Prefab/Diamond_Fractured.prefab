@@ -485,7 +485,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5551279364629803802}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 1.222, y: 0.37142843, z: 0.763}
   m_LocalScale: {x: 0.5, y: 0.5, z: 0.5}
   m_ConstrainProportionsScale: 1
@@ -609,6 +609,8 @@ MonoBehaviour:
     m_Bits: 4294967295
   miningSound: {fileID: 0}
   chunkFallSounds: []
+  miningForceIntensity: 20
+  gemRevealSystem: {fileID: 0}
 --- !u!1 &7238782647569430400
 GameObject:
   m_ObjectHideFlags: 0
