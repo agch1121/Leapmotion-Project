@@ -1,6 +1,8 @@
-﻿using UnityEngine;
+﻿using LibreFracture;
+/// <summary>
+/// 게임 시using UnityEngine;
 using System.Collections;
-using LibreFracture;
+using UnityEngine;
 
 /// <summary>
 /// 채굴 완료 시 카메라를 이동하여 보석을 보여주는 시스템
@@ -13,13 +15,14 @@ public class GemRevealSystem : MonoBehaviour
     public Transform originalCameraPosition; // 원래 카메라 위치 (복구용)
 
     [Header("보석 설정")]
-    public GameObject[] gemPrefabs; // 결과 보석들 (품질별로 준비)
+    public GameObject[] gemPrefabs; // 결과 보석들 (품질별로 준비) - 사용 안함
+    public GameObject actualGem; // 실제 LibreFracture가 적용된 보석 오브젝트 (인스펙터에서 연결)
     public Transform gemSpawnPoint; // 보석이 나타날 위치
 
     [Header("연출 설정")]
     public float cameraTransitionTime = 2f; // 카메라 이동 시간
     public float gemDisplayTime = 2f; // 보석을 보여주는 시간
-    public float gemBreakDelay = 2f; // 보석이 부서지기까지 대기 시간
+    public float gemBreakDelay = 1f; // 보석이 부서지기까지 대기 시간
 
     [Header("효과")]
     public ParticleSystem revealEffect; // 보석 등장 효과
@@ -27,7 +30,6 @@ public class GemRevealSystem : MonoBehaviour
     public AudioClip gemBreakSound; // 보석 부서지는 사운드
 
     private AudioSource audioSource;
-    private GameObject currentGem;
     private bool isRevealing = false;
 
     // 카메라 원본 상태 저장
@@ -49,6 +51,23 @@ public class GemRevealSystem : MonoBehaviour
             originalPosition = mainCamera.transform.position;
             originalRotation = mainCamera.transform.rotation;
         }
+
+        // 실제 보석 오브젝트 초기 상태 설정
+        if (actualGem != null)
+        {
+            actualGem.SetActive(false); // 게임 시작 시 비활성화
+        }
+    }
+
+    /// <summary>
+    /// 게임 시작 시 보석 미리보기 (파괴 절대 없음)
+    /// </summary>
+    public void StartGemPreview()
+    {
+        if (isRevealing) return;
+
+        Debug.Log("보석 미리보기 연출 시작!");
+        StartCoroutine(GemPreviewSequence());
     }
 
     /// <summary>
@@ -58,12 +77,69 @@ public class GemRevealSystem : MonoBehaviour
     {
         if (isRevealing) return;
 
-        Debug.Log($"🎬 보석 공개 연출 시작! 품질: {gemQuality}");
+        Debug.Log($"보석 최종 연출 시작! 품질: {gemQuality} (파괴 있음)");
         StartCoroutine(GemRevealSequence(gemQuality));
     }
 
     /// <summary>
-    /// 보석 공개 연출 시퀀스
+    /// 보석이 채굴 중 파괴될 때 즉시 연출
+    /// </summary>
+    public void StartGemDestruction()
+    {
+        if (isRevealing) return;
+
+        Debug.Log("보석 즉시 파괴 연출 시작! (0점 달성)");
+        StartCoroutine(GemDestructionSequence());
+    }
+
+    /// <summary>
+    /// 게임 시작 시 보석 미리보기 시퀀스 (파괴 절대 없음)
+    /// </summary>
+    IEnumerator GemPreviewSequence()
+    {
+        isRevealing = true;
+
+        // 1단계: 카메라를 보석 위치로 이동
+        yield return StartCoroutine(MoveCameraToGem());
+
+        // 2단계: 보석 활성화 (파괴 없이)
+        if (actualGem != null)
+        {
+            actualGem.SetActive(true);
+            actualGem.transform.position = gemSpawnPoint.position;
+            actualGem.transform.rotation = gemSpawnPoint.rotation;
+            actualGem.transform.localScale = Vector3.one;
+
+            // 등장 효과만
+            if (revealEffect != null)
+            {
+                revealEffect.transform.position = gemSpawnPoint.position;
+                revealEffect.Play();
+            }
+
+            if (gemRevealSound != null && audioSource != null)
+            {
+                audioSource.PlayOneShot(gemRevealSound);
+            }
+        }
+
+        // 3단계: 보석을 잠시 보여주기
+        yield return new WaitForSeconds(gemDisplayTime);
+
+        // 4단계: 보석을 숨기기 (파괴 절대 안함!)
+        if (actualGem != null)
+        {
+            actualGem.SetActive(false);
+        }
+
+        // 5단계: 카메라를 원래 위치로 복구
+        yield return StartCoroutine(ReturnCameraToOriginal());
+
+        isRevealing = false;
+    }
+
+    /// <summary>
+    /// 보석 공개 연출 시퀀스 (최종 연출 - 파괴 포함)
     /// </summary>
     IEnumerator GemRevealSequence(int gemQuality)
     {
@@ -78,14 +154,44 @@ public class GemRevealSystem : MonoBehaviour
         // 3단계: 보석을 잠시 보여주기
         yield return new WaitForSeconds(gemDisplayTime);
 
-        // 4단계: 보석 부서뜨리기
+        // 4단계: 보석 부서뜨리기 (최종 연출에서만!)
         yield return StartCoroutine(BreakGemWithEffect());
 
         // 5단계: 카메라를 원래 위치로 복구
         yield return StartCoroutine(ReturnCameraToOriginal());
 
         isRevealing = false;
-        Debug.Log("🎬 보석 공개 연출 완료!");
+    }
+
+    /// <summary>
+    /// 채굴 중 보석 파괴 시퀀스 (즉시 파괴 - 카메라 복구 안함)
+    /// </summary>
+    IEnumerator GemDestructionSequence()
+    {
+        isRevealing = true;
+
+        // 1단계: 카메라를 보석 위치로 이동
+        yield return StartCoroutine(MoveCameraToGem());
+
+        // 2단계: 보석 활성화
+        if (actualGem != null)
+        {
+            actualGem.SetActive(true);
+            actualGem.transform.position = gemSpawnPoint.position;
+            actualGem.transform.rotation = gemSpawnPoint.rotation;
+            actualGem.transform.localScale = Vector3.one;
+        }
+
+        // 3단계: 짧은 대기 후 즉시 파괴
+        yield return new WaitForSeconds(0.5f);
+
+        // 4단계: 마우스 클릭과 동일한 효과 적용
+        SimulateMouseClick();
+
+        // 5단계: 파괴 장면을 계속 보여주기 (카메라 복구 안함)
+        // 게임 오버 상태이므로 카메라는 보석 위치에 그대로 유지
+
+        isRevealing = false;
     }
 
     /// <summary>
@@ -94,8 +200,6 @@ public class GemRevealSystem : MonoBehaviour
     IEnumerator MoveCameraToGem()
     {
         if (mainCamera == null || gemRevealPosition == null) yield break;
-
-        Debug.Log("📹 카메라 이동 시작");
 
         Vector3 startPos = mainCamera.transform.position;
         Quaternion startRot = mainCamera.transform.rotation;
@@ -120,8 +224,6 @@ public class GemRevealSystem : MonoBehaviour
         // 최종 위치 정확히 설정
         mainCamera.transform.position = targetPos;
         mainCamera.transform.rotation = targetRot;
-
-        Debug.Log("📹 카메라 이동 완료");
     }
 
     /// <summary>
@@ -129,21 +231,18 @@ public class GemRevealSystem : MonoBehaviour
     /// </summary>
     IEnumerator SpawnGemWithEffect(int gemQuality)
     {
-        if (gemSpawnPoint == null) yield break;
+        if (gemSpawnPoint == null || actualGem == null)
+        {
+            yield break;
+        }
 
-        Debug.Log($"💎 보석 생성 시작 (품질: {gemQuality})");
+        // 실제 보석 활성화 및 위치 설정
+        actualGem.SetActive(true);
+        actualGem.transform.position = gemSpawnPoint.position;
+        actualGem.transform.rotation = gemSpawnPoint.rotation;
 
-        // 보석 선택 (품질에 따라)
-        GameObject gemToSpawn = SelectGemByQuality(gemQuality);
-        if (gemToSpawn == null) yield break;
-
-        // 보석 생성
-        //currentGem = Instantiate(gemToSpawn, gemSpawnPoint.position, gemSpawnPoint.rotation);
-
-        currentGem = gemPrefabs[0];
-        currentGem.SetActive(true);
         // 초기에는 작게 시작
-        currentGem.transform.localScale = Vector3.zero;
+        actualGem.transform.localScale = Vector3.zero;
 
         // 등장 효과
         if (revealEffect != null)
@@ -168,30 +267,185 @@ public class GemRevealSystem : MonoBehaviour
             float t = elapsedTime / scaleTime;
             t = Mathf.SmoothStep(0f, 1f, t);
 
-            currentGem.transform.localScale = Vector3.Lerp(Vector3.zero, targetScale, t);
+            actualGem.transform.localScale = Vector3.Lerp(Vector3.zero, targetScale, t);
 
             elapsedTime += Time.deltaTime;
             yield return null;
         }
 
-        currentGem.transform.localScale = targetScale;
-        Debug.Log("💎 보석 등장 완료");
+        actualGem.transform.localScale = targetScale;
     }
 
     /// <summary>
-    /// 품질에 따른 보석 선택
+    /// 품질에 따른 보석 선택 (현재는 사용하지 않음 - actualGem 사용)
     /// </summary>
     GameObject SelectGemByQuality(int quality)
     {
-        if (gemPrefabs == null || gemPrefabs.Length == 0)
+        // actualGem을 사용하므로 이 함수는 더 이상 필요 없음
+        // 하지만 호환성을 위해 유지
+        return actualGem;
+    }
+
+    /// <summary>
+    /// Test.cs의 마우스 클릭과 정확히 동일한 효과 시뮬레이션
+    /// </summary>
+    void SimulateMouseClick()
+    {
+        if (actualGem == null) return;
+
+        Test testScript = FindFirstObjectByType<Test>();
+        if (testScript == null) return;
+
+        // 보석 중앙 지점과 표면 법선 계산
+        Vector3 gemCenter = actualGem.transform.position;
+        Vector3 surfaceNormal = Vector3.up;
+
+        // Test.cs의 MineAtPoint와 동일한 로직 직접 실행
+        // 1. 보석 보호 시스템에 충격 전달
+        GemProtectionSystem gemProtection = testScript.GetComponent<GemProtectionSystem>();
+        if (gemProtection != null)
         {
-            Debug.LogWarning("보석 프리팹이 설정되지 않았습니다!");
-            return null;
+            float miningForce = 20f;
+            gemProtection.CheckMiningImpactOnGems(gemCenter, miningForce);
         }
 
-        // 품질을 배열 인덱스로 변환 (0~100 점수를 배열 크기에 맞게)
-        int index = Mathf.Clamp(quality * gemPrefabs.Length / 100, 0, gemPrefabs.Length - 1);
-        return gemPrefabs[index];
+        // 2. 채굴 효과 생성 (Test.cs와 동일)
+        CreateMiningEffect(gemCenter, surfaceNormal);
+
+        // 3. 채굴 사운드 재생
+        if (gemBreakSound != null && audioSource != null)
+        {
+            audioSource.PlayOneShot(gemBreakSound);
+        }
+
+        // 4. ChunkNode 직접 파괴 (Test.cs의 RemoveChunkGently와 동일)
+        ChunkNode[] chunks = actualGem.GetComponentsInChildren<ChunkNode>();
+
+        foreach (ChunkNode chunk in chunks)
+        {
+            if (chunk != null && chunk.gameObject != null)
+            {
+                // Test.cs와 동일한 방식으로 연결 끊기
+                BreakChunkConnections(chunk);
+
+                // Test.cs와 동일한 방식으로 힘 적용
+                ApplyGentleForce(chunk, surfaceNormal);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Test.cs의 CreateMiningEffect와 동일
+    /// </summary>
+    void CreateMiningEffect(Vector3 position, Vector3 normal)
+    {
+        // 채굴 먼지 (작은 양)
+        for (int i = 0; i < 5; i++)
+        {
+            GameObject dust = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            dust.transform.position = position + Random.insideUnitSphere * 0.1f;
+            dust.transform.localScale = Vector3.one * Random.Range(0.02f, 0.05f);
+
+            Renderer dustRenderer = dust.GetComponent<Renderer>();
+            dustRenderer.material.color = new Color(0.7f, 0.6f, 0.4f, 0.8f);
+
+            Rigidbody dustRb = dust.AddComponent<Rigidbody>();
+            Vector3 force = normal * Random.Range(1f, 3f) + Random.insideUnitSphere * 0.5f;
+            dustRb.AddForce(force, ForceMode.Impulse);
+
+            Destroy(dust, 1.5f);
+        }
+
+        // 작은 돌조각 (1-2개만)
+        int chipCount = Random.Range(1, 3);
+        for (int i = 0; i < chipCount; i++)
+        {
+            GameObject chip = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            chip.transform.position = position + Random.insideUnitSphere * 0.05f;
+            chip.transform.localScale = Vector3.one * Random.Range(0.03f, 0.07f);
+            chip.transform.rotation = Random.rotation;
+
+            Renderer chipRenderer = chip.GetComponent<Renderer>();
+            chipRenderer.material.color = new Color(0.5f, 0.4f, 0.3f);
+
+            Rigidbody chipRb = chip.AddComponent<Rigidbody>();
+            Vector3 chipForce = normal * Random.Range(2f, 5f) + Random.insideUnitSphere * 1f;
+            chipRb.AddForce(chipForce, ForceMode.Impulse);
+
+            Destroy(chip, 2f);
+        }
+    }
+
+    /// <summary>
+    /// Test.cs의 MineAtPoint와 동일한 로직 (간단 버전)
+    /// </summary>
+    void ApplyDirectMiningImpact(Vector3 miningPoint, Vector3 surfaceNormal)
+    {
+        // 보석의 모든 ChunkNode 찾기
+        ChunkNode[] chunks = actualGem.GetComponentsInChildren<ChunkNode>();
+
+        Debug.Log($"보석에서 {chunks.Length}개의 ChunkNode 발견");
+
+        if (chunks.Length == 0)
+        {
+            Debug.LogError("actualGem에 ChunkNode가 없습니다!");
+            return;
+        }
+
+        // Test.cs와 동일한 방식으로 조각 제거
+        foreach (ChunkNode chunk in chunks)
+        {
+            if (chunk != null && chunk.gameObject != null)
+            {
+                // 연결 끊기
+                BreakChunkConnections(chunk);
+
+                // 물리 힘 적용
+                ApplyGentleForce(chunk, surfaceNormal);
+
+                Debug.Log($"ChunkNode {chunk.name} 파괴 처리 완료");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Test.cs의 BreakChunkConnections와 동일
+    /// </summary>
+    void BreakChunkConnections(ChunkNode chunk)
+    {
+        if (chunk == null) return;
+
+        // 모든 Joint 제거
+        Joint[] joints = chunk.GetComponents<Joint>();
+        foreach (Joint joint in joints)
+        {
+            if (joint != null)
+                Destroy(joint);
+        }
+
+        FixedJoint[] fixedJoints = chunk.GetComponents<FixedJoint>();
+        foreach (FixedJoint fixedJoint in fixedJoints)
+        {
+            if (fixedJoint != null)
+                Destroy(fixedJoint);
+        }
+    }
+
+    /// <summary>
+    /// Test.cs의 ApplyGentleForce와 동일
+    /// </summary>
+    void ApplyGentleForce(ChunkNode chunk, Vector3 surfaceNormal)
+    {
+        Rigidbody rb = chunk.GetComponent<Rigidbody>();
+        if (rb == null) return;
+
+        // 자연스러운 방향으로 부드럽게
+        Vector3 gentleDirection = surfaceNormal + Random.insideUnitSphere * 0.3f;
+        gentleDirection.y = Mathf.Max(gentleDirection.y, 0.1f);
+
+        float gentleForce = 25f; // 보석용으로 더 강하게
+        rb.AddForce(gentleDirection * gentleForce, ForceMode.Impulse);
+        rb.AddTorque(Random.insideUnitSphere * gentleForce * 0.2f, ForceMode.Impulse);
     }
 
     /// <summary>
@@ -199,72 +453,23 @@ public class GemRevealSystem : MonoBehaviour
     /// </summary>
     IEnumerator BreakGemWithEffect()
     {
-        if (currentGem == null) yield break;
-
-        Debug.Log("💥 보석 파괴 시작");
+        if (actualGem == null) yield break;
 
         // 파괴 대기 시간
         yield return new WaitForSeconds(gemBreakDelay);
 
-        // 파괴 사운드
-        if (gemBreakSound != null && audioSource != null)
-        {
-            audioSource.PlayOneShot(gemBreakSound);
-        }
-
-        // LibreFracture가 적용된 보석이라면 물리적 충격 가하기
-        ChunkGraphManager gemChunkManager = currentGem.GetComponent<ChunkGraphManager>();
-        if (gemChunkManager != null)
-        {
-            // 보석 중앙에 강한 충격 가하기
-            Vector3 gemCenter = currentGem.transform.position;
-            ApplyBreakingForce(gemCenter);
-
-            Debug.Log("💥 LibreFracture 보석 파괴 적용");
-        }
-        else
-        {
-            // 일반적인 파괴 효과 (파티클 등)
-            CreateSimpleBreakEffect();
-            Debug.Log("💥 일반 보석 파괴 효과 적용");
-            // 보석 페이드아웃
-            yield return StartCoroutine(FadeOutGem());
-        }
-
-        Debug.Log("💥 보석 파괴 완료");
+        // 마우스 클릭과 같은 충격 적용
+        SimulateMouseClick();
     }
 
-    /// <summary>
-    /// 보석에 파괴 충격 적용
-    /// </summary>
-    void ApplyBreakingForce(Vector3 center)
-    {
-        // 보석의 모든 ChunkNode에 충격 적용
-        ChunkNode[] chunks = currentGem.GetComponentsInChildren<ChunkNode>();
 
-        foreach (ChunkNode chunk in chunks)
-        {
-            Rigidbody rb = chunk.GetComponent<Rigidbody>();
-            if (rb != null)
-            {
-                // 중심에서 바깭쪽으로 폭발하는 힘
-                Vector3 direction = (chunk.transform.position - center).normalized;
-                if (direction.magnitude < 0.1f) // 너무 가까우면 랜덤 방향
-                    direction = Random.insideUnitSphere.normalized;
-
-                float force = Random.Range(10f, 20f);
-                rb.AddForce(direction * force, ForceMode.Impulse);
-                rb.AddTorque(Random.insideUnitSphere * force * 0.5f, ForceMode.Impulse);
-            }
-        }
-    }
 
     /// <summary>
     /// 간단한 파괴 효과 (LibreFracture가 없는 경우)
     /// </summary>
     void CreateSimpleBreakEffect()
     {
-        Vector3 gemCenter = currentGem.transform.position;
+        Vector3 gemCenter = actualGem.transform.position;
 
         // 파편 효과
         for (int i = 0; i < 10; i++)
@@ -291,42 +496,11 @@ public class GemRevealSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// 보석 페이드아웃
-    /// </summary>
-    IEnumerator FadeOutGem()
-    {
-        if (currentGem == null) yield break;
-
-        Renderer gemRenderer = currentGem.GetComponent<Renderer>();
-        if (gemRenderer == null) yield break;
-
-        Material gemMaterial = gemRenderer.material;
-        Color originalColor = gemMaterial.color;
-
-        float fadeTime = 1f;
-        float elapsedTime = 0f;
-
-        while (elapsedTime < fadeTime)
-        {
-            float alpha = Mathf.Lerp(1f, 0f, elapsedTime / fadeTime);
-            gemMaterial.color = new Color(originalColor.r, originalColor.g, originalColor.b, alpha);
-
-            elapsedTime += Time.deltaTime;
-            yield return null;
-        }
-
-        Destroy(currentGem);
-        currentGem = null;
-    }
-
-    /// <summary>
     /// 카메라를 원래 위치로 복구
     /// </summary>
     IEnumerator ReturnCameraToOriginal()
     {
         if (mainCamera == null) yield break;
-
-        Debug.Log("카메라 복구 시작");
 
         Vector3 startPos = mainCamera.transform.position;
         Quaternion startRot = mainCamera.transform.rotation;
@@ -348,16 +522,26 @@ public class GemRevealSystem : MonoBehaviour
         // 최종 위치 정확히 설정
         mainCamera.transform.position = originalPosition;
         mainCamera.transform.rotation = originalRotation;
-
-        Debug.Log("카메라 복구 완료");
     }
 
     /// <summary>
     /// 수동으로 연출 테스트
     /// </summary>
+    [ContextMenu("보석 미리보기 테스트")]
+    public void TestGemPreview()
+    {
+        StartGemPreview();
+    }
+
     [ContextMenu("보석 연출 테스트")]
     public void TestGemReveal()
     {
         StartGemReveal(75); // 75점 품질로 테스트
+    }
+
+    [ContextMenu("보석 파괴 테스트")]
+    public void TestGemDestruction()
+    {
+        StartGemDestruction();
     }
 }

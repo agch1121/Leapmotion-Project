@@ -23,7 +23,7 @@ public class UIManager : MonoBehaviour
     public float safeThreshold = 0.55f; // 안전 임계값 (55%)
 
     [Header("게임 모드 설정")]
-    public float gameTimeLimit = 300f; // 5분 (도전 모드용)
+    public float gameTimeLimit = 10f; // 5분 (도전 모드용)
     public bool enableTimer = false;   // 타이머 활성화 여부
 
     // 시스템 참조

@@ -13,7 +13,7 @@ public class GemProtectionSystem : MonoBehaviour
         [Header("보호 설정")]
         public float damageThreshold = 15f; // 이 수치 이상의 충격부터 손상 위험
         public float protectionRadius = 0.4f; // 보석 주변 보호 영역
-        public int freeHitCount = 1; // 무료로 견딜 수 있는 타격 횟수
+        public int freeHitCount = 1; // 무료로 견딜 수 있는 충격 횟수
 
         [Header("손상 상태")]
         [Range(0f, 100f)]
@@ -25,13 +25,16 @@ public class GemProtectionSystem : MonoBehaviour
         public Material heavilyDamagedMaterial;
 
         // 내부 상태 변수들
-        [HideInInspector] public int receivedHits = 0; // 받은 타격 횟수
+        [HideInInspector] public int receivedHits = 0; // 받은 충격 횟수
         [HideInInspector] public bool isProtected = true; // 현재 보호 상태인지
         [HideInInspector] public bool isDestroyed = false; // 완전 파괴 여부
     }
 
     [Header("보석 목록")]
     public GemData[] gems;
+
+    [Header("파괴 연출 시스템")]
+    public GemRevealSystem gemRevealSystem; // GemRevealSystem 참조
 
     [Header("디버그")]
     public bool showProtectionRadius = true;
@@ -40,6 +43,12 @@ public class GemProtectionSystem : MonoBehaviour
     private void Start()
     {
         InitializeGems();
+
+        // GemRevealSystem이 없으면 찾기
+        if (gemRevealSystem == null)
+        {
+            gemRevealSystem = FindFirstObjectByType<GemRevealSystem>();
+        }
     }
 
     /// <summary>
@@ -66,12 +75,13 @@ public class GemProtectionSystem : MonoBehaviour
                 gem.receivedHits = 0;
                 gem.isProtected = true;
                 gem.currentCondition = 100f;
+                gem.isDestroyed = false;
 
                 // 초기 머티리얼 적용
                 UpdateGemVisuals(gem);
 
                 if (enableDebugLogs)
-                    Debug.Log($"보석 초기화: {gem.gemName} - 보호반경: {gem.protectionRadius}m");
+                    Debug.Log($"보석 초기화: {gem.gemName} - 보호범위: {gem.protectionRadius}m");
             }
         }
     }
@@ -115,14 +125,14 @@ public class GemProtectionSystem : MonoBehaviour
         float actualImpact = impactForce * distanceMultiplier;
 
         if (enableDebugLogs)
-            Debug.Log($"{gem.gemName}: 충격 감지! 타격 #{gem.receivedHits}, 실제충격: {actualImpact:F1}");
+            Debug.Log($"{gem.gemName}: 충격 감지! 충격 #{gem.receivedHits}, 실제충격: {actualImpact:F1}");
 
-        // 보호 타격 횟수 이하면 무시 (보호막 역할)
+        // 보호 충격 횟수 이하면 무시 (보호막 역할)
         if (gem.receivedHits <= gem.freeHitCount)
         {
             ShowProtectionEffect(gem);
             if (enableDebugLogs)
-                Debug.Log($"{gem.gemName}: 보호막으로 충격 흡수! (무료 타격: {gem.receivedHits}/{gem.freeHitCount})");
+                Debug.Log($"{gem.gemName}: 보호막으로 충격 흡수! (무료 충격: {gem.receivedHits}/{gem.freeHitCount})");
             return;
         }
 
@@ -202,19 +212,22 @@ public class GemProtectionSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// 보석 완전 파괴 처리
+    /// 보석 완전 파괴 처리 - 즉시 연출 시작!
     /// </summary>
     private void OnGemDestroyed(GemData gem)
     {
-        if (enableDebugLogs)
-            Debug.Log($"{gem.gemName} 완전 파괴됨!");
+        // 게임이 시작되지 않았다면 연출하지 않음 (미리보기 중)
+        Test testScript = GetComponent<Test>();
+        if (testScript != null && !testScript.IsGameStarted) return;
+
+        // 즉시 GemRevealSystem의 파괴 연출 호출
+        if (gemRevealSystem != null)
+        {
+            gemRevealSystem.StartGemDestruction();
+        }
 
         // 파괴 효과
         StartCoroutine(CreateDestructionEffect(gem.gemObject.transform.position));
-
-        
-        // 여기에 점수 감점이나 게임 오버 로직 추가 가능
-        // 예: ScoreManager.Instance.OnGemDestroyed(gem);
     }
 
     /// <summary>
@@ -325,6 +338,18 @@ public class GemProtectionSystem : MonoBehaviour
     }
 
     /// <summary>
+    /// 보석이 하나라도 완전히 파괴되었는지 확인
+    /// </summary>
+    public bool HasAnyGemDestroyed()
+    {
+        foreach (GemData gem in gems)
+        {
+            if (gem.isDestroyed) return true;
+        }
+        return false;
+    }
+
+    /// <summary>
     /// 디버그용: 보석 상태 출력
     /// </summary>
     [ContextMenu("보석 상태 출력")]
@@ -336,11 +361,90 @@ public class GemProtectionSystem : MonoBehaviour
             if (gem.gemObject != null)
             {
                 string status = gem.isDestroyed ? "파괴됨" : $"{gem.currentCondition:F1}%";
-                string protection = gem.isProtected ? "보호됨" : "취약";
-                Debug.Log($"{gem.gemName}: {status} ({protection}) - 타격: {gem.receivedHits}회");
+                string protection = gem.isProtected ? "보호됨" : "노출";
+                Debug.Log($"{gem.gemName}: {status} ({protection}) - 충격: {gem.receivedHits}회");
             }
         }
         Debug.Log("==============");
+    }
+
+    /// <summary>
+    /// 테스트용: 특정 보석에 강제 손상 적용
+    /// </summary>
+    [ContextMenu("첫 번째 보석 강제 파괴 테스트")]
+    public void TestForceDestroyFirstGem()
+    {
+        if (gems.Length > 0 && gems[0].gemObject != null)
+        {
+            Debug.Log("첫 번째 보석 강제 파괴 테스트 시작");
+            Debug.Log($"GemRevealSystem 연결 상태: {(gemRevealSystem != null ? "연결됨" : "연결 안됨")}");
+
+            gems[0].currentCondition = 0f;
+            gems[0].isDestroyed = true;
+            OnGemDestroyed(gems[0]);
+        }
+        else
+        {
+            Debug.LogError("첫 번째 보석이 없거나 gemObject가 null입니다!");
+        }
+    }
+
+    /// <summary>
+    /// 테스트용: 첫 번째 보석에 연속 손상 적용
+    /// </summary>
+    [ContextMenu("첫 번째 보석에 연속 손상 테스트")]
+    public void TestContinuousDamageFirstGem()
+    {
+        if (gems.Length > 0 && gems[0].gemObject != null && !gems[0].isDestroyed)
+        {
+            Debug.Log("첫 번째 보석에 연속 손상 적용 시작");
+
+            // 강한 충격을 여러 번 적용하여 0점까지 만들기
+            Vector3 gemPosition = gems[0].gemObject.transform.position;
+
+            for (int i = 0; i < 10; i++)
+            {
+                CheckMiningImpactOnGems(gemPosition, 30f); // 강한 충격
+
+                if (gems[0].isDestroyed)
+                {
+                    Debug.Log($"보석이 {i + 1}번째 충격으로 파괴되었습니다!");
+                    break;
+                }
+                else
+                {
+                    Debug.Log($"{i + 1}번째 충격 후 보석 상태: {gems[0].currentCondition:F1}%");
+                }
+            }
+        }
+        else
+        {
+            Debug.LogError("첫 번째 보석이 없거나 이미 파괴되었습니다!");
+        }
+    }
+
+    /// <summary>
+    /// 시스템 연결 상태 확인
+    /// </summary>
+    [ContextMenu("시스템 연결 상태 확인")]
+    public void CheckSystemConnections()
+    {
+        Debug.Log("=== 시스템 연결 상태 ===");
+        Debug.Log($"GemRevealSystem: {(gemRevealSystem != null ? "연결됨" : "연결 안됨")}");
+        Debug.Log($"보석 개수: {gems.Length}");
+
+        for (int i = 0; i < gems.Length; i++)
+        {
+            if (gems[i].gemObject != null)
+            {
+                Debug.Log($"보석 {i}: {gems[i].gemName} - 상태: {gems[i].currentCondition:F1}% - 파괴됨: {gems[i].isDestroyed}");
+            }
+            else
+            {
+                Debug.Log($"보석 {i}: gemObject가 null!");
+            }
+        }
+        Debug.Log("=====================");
     }
 
     /// <summary>
@@ -358,7 +462,9 @@ public class GemProtectionSystem : MonoBehaviour
                 Gizmos.DrawWireSphere(gem.gemObject.transform.position, gem.protectionRadius);
 
                 // 보석 이름 표시
+#if UNITY_EDITOR
                 UnityEditor.Handles.Label(gem.gemObject.transform.position + Vector3.up * 0.3f, gem.gemName);
+#endif
             }
         }
     }

@@ -20,6 +20,10 @@ public class Test : MonoBehaviour
     [Header("보석 연출 시스템")]
     public GemRevealSystem gemRevealSystem; // GemRevealSystem 참조
 
+    [Header("게임 시작 설정")]
+    public bool showGemPreviewOnStart = true; // 게임 시작 시 보석 미리보기 여부
+    public float gameStartDelay = 2f; // 게임 시작 후 미리보기까지 대기 시간
+
     private ChunkGraphManager chunkGraphManager;
     private AudioSource audioSource;
     private ChunkNode[] allChunks; // 모든 조각 캐시
@@ -29,6 +33,14 @@ public class Test : MonoBehaviour
 
     // 조각 카운터 시스템 참조
     private ChunkCounter chunkCounter;
+
+    // 게임 시작 상태
+    private bool gameStarted = false;
+
+    /// <summary>
+    /// 게임이 시작되었는지 확인하는 프로퍼티 (다른 스크립트에서 참조용)
+    /// </summary>
+    public bool IsGameStarted => gameStarted;
 
     void Start()
     {
@@ -71,10 +83,48 @@ public class Test : MonoBehaviour
                 Debug.LogWarning("GemRevealSystem이 없습니다. 보석 연출이 비활성화됩니다.");
             }
         }
+
         // 모든 조각들 캐시 (성능 향상)
         RefreshChunkCache();
 
         Debug.Log($"채굴 시스템 초기화 완료 - 총 {allChunks?.Length ?? 0}개 조각");
+
+        // 게임 시작 시 보석 미리보기 실행
+        if (showGemPreviewOnStart && gemRevealSystem != null)
+        {
+            Invoke(nameof(StartGemPreview), gameStartDelay);
+        }
+        else
+        {
+            gameStarted = true; // 미리보기 없으면 바로 게임 시작
+        }
+    }
+
+    /// <summary>
+    /// 게임 시작 시 보석 미리보기 실행
+    /// </summary>
+    void StartGemPreview()
+    {
+        if (gemRevealSystem != null)
+        {
+            gemRevealSystem.StartGemPreview(); // 미리보기만!
+
+            // 미리보기 연출 시간 후 게임 시작 (카메라 이동 시간 * 2 + 보석 표시 시간)
+            float previewDuration = (gemRevealSystem.cameraTransitionTime * 2) + gemRevealSystem.gemDisplayTime;
+            Invoke(nameof(EnableGameplay), previewDuration + 1f); // 여유시간 1초 추가
+        }
+        else
+        {
+            gameStarted = true;
+        }
+    }
+
+    /// <summary>
+    /// 게임플레이 활성화
+    /// </summary>
+    void EnableGameplay()
+    {
+        gameStarted = true;
     }
 
     void RefreshChunkCache()
@@ -96,6 +146,9 @@ public class Test : MonoBehaviour
 
     void Update()
     {
+        // 게임이 시작되지 않았으면 입력 무시
+        if (!gameStarted) return;
+
         if (Input.GetMouseButtonDown(0))
         {
             HandleMouseClick();
@@ -118,6 +171,12 @@ public class Test : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.X))
         {
             CleanupAllFallenChunks();
+        }
+
+        // P키로 보석 미리보기 수동 실행 (테스트용)
+        if (Input.GetKeyDown(KeyCode.P) && gemRevealSystem != null)
+        {
+            gemRevealSystem.StartGemPreview();
         }
     }
 
@@ -292,50 +351,19 @@ public class Test : MonoBehaviour
 
     void OnChunkCountChanged(int activeChunks, int destroyedChunks, float progress)
     {
-        // 중요한 이정표에서만 특별 메시지
-        if (progress >= 0.7f && gemProtectionSystem != null)
-        {
-            bool gem70Warned = false;
-            if (!gem70Warned)
-            {
-                Debug.Log("💎 보석이 노출되기 시작했습니다! 조심스럽게 채굴하세요.");
-                gemProtectionSystem.PrintGemStatus();
-                gem70Warned = true;
-            }
-        }
+        // 게임이 시작되지 않았으면 진행도 처리 안함
+        if (!gameStarted) return;
 
-        // 완전 채굴 체크 - 여기서 보석 연출 시작!
+        // 완전 채굴 체크
         if (activeChunks <= 0)
         {
-            Debug.Log("채굴 완료! 보석 결과 연출을 시작합니다.");
-
             // 최종 보석 점수 계산
             int finalGemScore = CalculateFinalGemScore();
 
-            // 보석 연출 시작
+            // 보석 연출 시작 (게임이 완전히 시작된 후에만!)
             if (gemRevealSystem != null)
             {
                 gemRevealSystem.StartGemReveal(finalGemScore);
-            }
-            else
-            {
-                // GemRevealSystem이 없으면 기존 방식
-                Debug.Log("=== 채굴 완료! 최종 보석 상태 ===");
-                if (gemProtectionSystem != null)
-                {
-                    gemProtectionSystem.PrintGemStatus();
-                }
-            }
-        }
-
-        // 90% 달성 시 알림
-        if (progress >= 0.9f)
-        {
-            bool gem90Warned = false;
-            if (!gem90Warned)
-            {
-                Debug.Log("거의 완성! 마지막 조각들을 조심스럽게 제거하세요.");
-                gem90Warned = true;
             }
         }
     }
@@ -364,21 +392,6 @@ public class Test : MonoBehaviour
         Debug.Log($"최종 점수: {averageScore}점 (총 {gemCount}개 보석)");
 
         return averageScore;
-    }
-
-    [ContextMenu("보석 연출 테스트")]
-    public void TestGemRevealManual()
-    {
-        if (gemRevealSystem != null)
-        {
-            int testScore = CalculateFinalGemScore();
-            Debug.Log($"보석 연출 테스트 시작! 점수: {testScore}");
-            gemRevealSystem.StartGemReveal(testScore);
-        }
-        else
-        {
-            Debug.LogWarning("GemRevealSystem이 설정되지 않았습니다!");
-        }
     }
 
     /// <summary>
@@ -474,42 +487,6 @@ public class Test : MonoBehaviour
             {
                 Gizmos.DrawWireSphere(hit.point, miningRadius);
             }
-        }
-    }
-
-    // 인스펙터에서 호출 가능한 함수들
-    [ContextMenu("Refresh Chunk Cache")]
-    public void RefreshChunkCacheMenu()
-    {
-        RefreshChunkCache();
-    }
-
-    [ContextMenu("Count Active Chunks")]
-    public void CountActiveChunks()
-    {
-        var activeChunks = System.Array.FindAll(allChunks, chunk =>
-            chunk != null &&
-            chunk.gameObject != null &&
-            chunk.gameObject.activeInHierarchy
-            );
-        Debug.Log($"활성 조각 수: {activeChunks.Length} / {allChunks.Length}");
-    }
-
-    [ContextMenu("Test Gem Protection")]
-    public void TestGemProtection()
-    {
-        if (gemProtectionSystem != null)
-        {
-            // 임의의 위치에서 강한 충격 테스트
-            Vector3 testPoint = transform.position;
-            float testForce = 25f; // 강한 충격
-
-            Debug.Log($"보석 보호 테스트: 충격 강도 {testForce} 적용");
-            gemProtectionSystem.CheckMiningImpactOnGems(testPoint, testForce);
-        }
-        else
-        {
-            Debug.LogWarning("GemProtectionSystem이 없습니다!");
         }
     }
 
