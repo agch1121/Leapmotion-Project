@@ -318,7 +318,10 @@ GameObject:
   - component: {fileID: 8753567869336620878}
   - component: {fileID: 5157166670665810500}
   - component: {fileID: 8254267361092375054}
-  - component: {fileID: 6567400932240762456}
+  - component: {fileID: 617018257198167316}
+  - component: {fileID: 7550309246074843865}
+  - component: {fileID: 4738769711356131811}
+  - component: {fileID: 1185576441789180676}
   m_Layer: 0
   m_Name: Green Ore
   m_TagString: Untagged
@@ -335,7 +338,7 @@ Transform:
   m_GameObject: {fileID: 420602459875923516}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 2.109, y: 0.282, z: 1.2781558}
+  m_LocalPosition: {x: 2.109, y: 0.243, z: 1.2781558}
   m_LocalScale: {x: 0.005, y: 0.005, z: 0.005}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -482,7 +485,7 @@ MonoBehaviour:
   jointBreakForce: 10
   anchored: 1
   freezeConnectedChunks: 0
-  startAsleep: 0
+  startAsleep: 1
 --- !u!64 &8254267361092375054
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -505,7 +508,7 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 4300000, guid: 95965ef6457481f488a1ab90243909eb, type: 3}
---- !u!114 &6567400932240762456
+--- !u!114 &617018257198167316
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -514,7 +517,27 @@ MonoBehaviour:
   m_GameObject: {fileID: 420602459875923516}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: eb6019a214700cc43b627b77eb4e01f2, type: 3}
+  m_Script: {fileID: 11500000, guid: 3876695dc91afb647bd97dfdf1a2d5ad, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  totalChunksAtStart: 0
+  currentActiveChunks: 0
+  currentRemovedChunks: 0
+  miningProgress: 0
+  enableDebugLogs: 1
+  enableProgressDebug: 1
+  autoRefreshCount: 1
+  refreshInterval: 0.5
+--- !u!114 &7550309246074843865
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 420602459875923516}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b6d4ad4dfc24b145835e905ff9356cb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   miningRadius: 0.3
@@ -523,8 +546,49 @@ MonoBehaviour:
   chunkLayer:
     serializedVersion: 2
     m_Bits: 4294967295
+  miningForceIntensity: 20
   miningSound: {fileID: 0}
   chunkFallSounds: []
+--- !u!114 &4738769711356131811
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 420602459875923516}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01b00c77c815c394e882416648df7441, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  mineralType: "\uB2E4\uC774\uC544\uBAAC\uB4DC"
+  hardness: 1
+  mineralColor: {r: 1, g: 1, b: 1, a: 1}
+  gemCount: 3
+  gemQuality: 1
+  totalMass: 10
+  jointBreakForce: 50
+--- !u!114 &1185576441789180676
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 420602459875923516}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c0b6dfe0c9e40db49bc88c69f4c89315, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  perfectGemScore: 100
+  damagedGemScore: 70
+  heavilyDamagedScore: 30
+  destroyedGemScore: 0
+  completionBonus: 20
+  speedBonus: 10
+  precisionBonus: 15
+  currentTotalScore: 0
+  currentStageScore: 0
 --- !u!1 &638759593323062403
 GameObject:
   m_ObjectHideFlags: 0

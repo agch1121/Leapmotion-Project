@@ -40,6 +40,10 @@ public class GemProtectionSystem : MonoBehaviour
     public bool showProtectionRadius = true;
     public bool enableDebugLogs = true;
 
+    [Header("이벤트 시스템")]
+    public System.Action OnAnyGemDestroyed; // 보석 파괴 시 발생하는 이벤트
+    public System.Action<GemData> OnSpecificGemDestroyed; // 특정 보석 파괴 시 발생
+
     private void Start()
     {
         InitializeGems();
@@ -228,6 +232,10 @@ public class GemProtectionSystem : MonoBehaviour
 
         // 파괴 효과
         StartCoroutine(CreateDestructionEffect(gem.gemObject.transform.position));
+
+        OnSpecificGemDestroyed?.Invoke(gem);
+        OnAnyGemDestroyed?.Invoke();
+        Debug.Log($"보석 파괴 이벤트 발생: {gem.gemName}");
     }
 
     /// <summary>

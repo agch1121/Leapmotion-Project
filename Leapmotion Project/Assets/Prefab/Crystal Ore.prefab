@@ -12478,6 +12478,10 @@ GameObject:
   - component: {fileID: 7571693931366916037}
   - component: {fileID: 4041829063393806540}
   - component: {fileID: 1716289920323796126}
+  - component: {fileID: 6396545355426801423}
+  - component: {fileID: 4219522394028190433}
+  - component: {fileID: 1850638867874176475}
+  - component: {fileID: 856687429977845522}
   m_Layer: 0
   m_Name: Crystal Ore
   m_TagString: Untagged
@@ -12493,7 +12497,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5148724340144632534}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.000000021855694, y: 0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 3.7604852, y: 0.87984025, z: 5.033489}
   m_LocalScale: {x: 100, y: 100, z: 100}
   m_ConstrainProportionsScale: 0
@@ -12648,6 +12652,7 @@ Transform:
   - {fileID: 212794824638156841}
   - {fileID: 4269900846986731043}
   - {fileID: 1701182623321875569}
+  - {fileID: 5008404667895065477}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &2050915819467418760
@@ -12749,18 +12754,116 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5148724340144632534}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: eb6019a214700cc43b627b77eb4e01f2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  miningRadius: 0.3
-  gentleForce: 5
+  miningRadius: 0.6
+  gentleForce: 20
   chunksPerClick: 2
   chunkLayer:
     serializedVersion: 2
     m_Bits: 4294967295
   miningSound: {fileID: 0}
+  chunkFallSounds: []
+  miningForceIntensity: 20
+  gemRevealSystem: {fileID: 0}
+  showGemPreviewOnStart: 1
+  gameStartDelay: 2
+  allow70PercentSuccess: 1
+  successThreshold: 0.7
+--- !u!114 &6396545355426801423
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5148724340144632534}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 085930dd6014ef642a8a4158082202f0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  gems:
+  - gemObject: {fileID: 1060411647888881698}
+    gemName: Gem
+    damageThreshold: 15
+    protectionRadius: 0.4
+    freeHitCount: 1
+    currentCondition: 100
+    perfectMaterial: {fileID: 0}
+    damagedMaterial: {fileID: 0}
+    heavilyDamagedMaterial: {fileID: 0}
+    receivedHits: 0
+    isProtected: 0
+    isDestroyed: 0
+  gemRevealSystem: {fileID: 0}
+  showProtectionRadius: 1
+  enableDebugLogs: 1
+--- !u!114 &4219522394028190433
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5148724340144632534}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d37bf346066372c4aa5075e2ff4c7b52, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  greenIndicator: {fileID: 0}
+  redIndicator: {fileID: 0}
+  forceSlider: {fileID: 0}
+  timeText: {fileID: 0}
+  progressSlider: {fileID: 0}
+  scoreText: {fileID: 0}
+  safeThreshold: 0.55
+  gameTimeLimit: 300
+  enableTimer: 1
+  enableTestMode: 1
+--- !u!114 &1850638867874176475
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5148724340144632534}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3876695dc91afb647bd97dfdf1a2d5ad, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  totalChunksAtStart: 0
+  currentActiveChunks: 0
+  currentRemovedChunks: 0
+  miningProgress: 0
+  enableDebugLogs: 1
+  enableProgressDebug: 1
+  autoRefreshCount: 1
+  refreshInterval: 0.5
+--- !u!114 &856687429977845522
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5148724340144632534}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8d1bbebdc56f4ca4c811062370abf497, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  gemType: "\uD06C\uB9AC\uC2A4\uD0C8"
+  stageTitle: "\uD06C\uB9AC\uC2A4\uD0C8 \uCC44\uAD74"
+  miningDifficulty: 1
+  miningRadius: 0.3
+  chunksPerStrike: 2
+  gentleForce: 5
+  successThreshold: 0.7
+  gemProtectionMultiplier: 1
+  miningFSounds: []
   chunkFallSounds: []
 --- !u!1 &5249048022537011390
 GameObject:
@@ -23098,3 +23201,124 @@ MeshCollider:
   m_Convex: 1
   m_CookingOptions: 30
   m_Mesh: {fileID: 4300000, guid: b83cef8c07891e149bd85f2c8e66c2a0, type: 2}
+--- !u!1001 &2054579001678151806
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 5999125997106055163}
+    m_Modifications:
+    - target: {fileID: 1311676079619618908, guid: a81644c0d262ac94c8a78a4b54ee31ff, type: 3}
+      propertyPath: m_Name
+      value: Gem (2)
+      objectReference: {fileID: 0}
+    - target: {fileID: 1311676079619618908, guid: a81644c0d262ac94c8a78a4b54ee31ff, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3076669605551186986, guid: a81644c0d262ac94c8a78a4b54ee31ff, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: f1066a07bc846524aa0cea055ef72598, type: 2}
+    - target: {fileID: 6413751723005570043, guid: a81644c0d262ac94c8a78a4b54ee31ff, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.0049999994
+      objectReference: {fileID: 0}
+    - target: {fileID: 6413751723005570043, guid: a81644c0d262ac94c8a78a4b54ee31ff, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.0049999994
+      objectReference: {fileID: 0}
+    - target: {fileID: 6413751723005570043, guid: a81644c0d262ac94c8a78a4b54ee31ff, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.0049999994
+      objectReference: {fileID: 0}
+    - target: {fileID: 6413751723005570043, guid: a81644c0d262ac94c8a78a4b54ee31ff, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6413751723005570043, guid: a81644c0d262ac94c8a78a4b54ee31ff, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6413751723005570043, guid: a81644c0d262ac94c8a78a4b54ee31ff, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6413751723005570043, guid: a81644c0d262ac94c8a78a4b54ee31ff, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6413751723005570043, guid: a81644c0d262ac94c8a78a4b54ee31ff, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.000000021855694
+      objectReference: {fileID: 0}
+    - target: {fileID: 6413751723005570043, guid: a81644c0d262ac94c8a78a4b54ee31ff, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6413751723005570043, guid: a81644c0d262ac94c8a78a4b54ee31ff, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6413751723005570043, guid: a81644c0d262ac94c8a78a4b54ee31ff, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6413751723005570043, guid: a81644c0d262ac94c8a78a4b54ee31ff, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6413751723005570043, guid: a81644c0d262ac94c8a78a4b54ee31ff, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6413751723005570043, guid: a81644c0d262ac94c8a78a4b54ee31ff, type: 3}
+      propertyPath: m_ConstrainProportionsScale
+      value: 1
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 1311676079619618908, guid: a81644c0d262ac94c8a78a4b54ee31ff, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6075353139099416362}
+  m_SourcePrefab: {fileID: 100100000, guid: a81644c0d262ac94c8a78a4b54ee31ff, type: 3}
+--- !u!1 &1060411647888881698 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1311676079619618908, guid: a81644c0d262ac94c8a78a4b54ee31ff, type: 3}
+  m_PrefabInstance: {fileID: 2054579001678151806}
+  m_PrefabAsset: {fileID: 0}
+--- !u!54 &6075353139099416362
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1060411647888881698}
+  serializedVersion: 4
+  m_Mass: 1
+  m_Drag: 0
+  m_AngularDrag: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 0
+  m_IsKinematic: 1
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 0
+--- !u!4 &5008404667895065477 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6413751723005570043, guid: a81644c0d262ac94c8a78a4b54ee31ff, type: 3}
+  m_PrefabInstance: {fileID: 2054579001678151806}
+  m_PrefabAsset: {fileID: 0}

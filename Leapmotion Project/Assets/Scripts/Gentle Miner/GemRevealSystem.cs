@@ -1,11 +1,10 @@
 ﻿using LibreFracture;
-/// <summary>
-/// 게임 시using UnityEngine;
 using System.Collections;
 using UnityEngine;
 
 /// <summary>
 /// 채굴 완료 시 카메라를 이동하여 보석을 보여주는 시스템
+/// 70% 성공, 100% 완료, 실패별 차별화된 연출 제공
 /// </summary>
 public class GemRevealSystem : MonoBehaviour
 {
@@ -66,12 +65,34 @@ public class GemRevealSystem : MonoBehaviour
     {
         if (isRevealing) return;
 
-        Debug.Log("보석 미리보기 연출 시작!");
+        Debug.Log("보석 미리보기 연출 시작! (파괴 절대 안함)");
         StartCoroutine(GemPreviewSequence());
     }
 
     /// <summary>
-    /// 채굴 완료 시 보석 공개 시작
+    /// 70% 성공 시 보석 성공 연출 - 회전 + 보존
+    /// </summary>
+    public void StartGemSuccessReveal(int gemQuality)
+    {
+        if (isRevealing) return;
+
+        Debug.Log($"보석 성공 연출 시작! 품질: {gemQuality} (회전 + 보존)");
+        StartCoroutine(GemSuccessSequence(gemQuality));
+    }
+
+    /// <summary>
+    /// 100% 완료 시 보석 완벽 연출 - 특별 회전 + 보존
+    /// </summary>
+    public void StartGemPerfectReveal(int gemQuality)
+    {
+        if (isRevealing) return;
+
+        Debug.Log($"보석 완벽 연출 시작! 품질: {gemQuality} (특별 회전 + 보존)");
+        StartCoroutine(GemPerfectSequence(gemQuality));
+    }
+
+    /// <summary>
+    /// 채굴 완료 시 보석 공개 시작 (기존 - 파괴 포함)
     /// </summary>
     public void StartGemReveal(int gemQuality)
     {
@@ -139,7 +160,57 @@ public class GemRevealSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// 보석 공개 연출 시퀀스 (최종 연출 - 파괴 포함)
+    /// 70% 성공 연출 시퀀스 - 회전 + 보존
+    /// </summary>
+    IEnumerator GemSuccessSequence(int gemQuality)
+    {
+        isRevealing = true;
+
+        // 1단계: 카메라를 보석 위치로 이동
+        yield return StartCoroutine(MoveCameraToGem());
+
+        // 2단계: 보석 생성 및 등장 효과
+        yield return StartCoroutine(SpawnGemWithEffect(gemQuality));
+
+        // 3단계: 성공 회전 연출
+        yield return StartCoroutine(RotateGemSuccess());
+
+        // 4단계: 성공 메시지 표시
+        yield return StartCoroutine(ShowSuccessMessage());
+
+        // 5단계: 카메라를 원래 위치로 복구
+        yield return StartCoroutine(ReturnCameraToOriginal());
+
+        isRevealing = false;
+    }
+
+    /// <summary>
+    /// 100% 완료 연출 시퀀스 - 특별 회전 + 보존
+    /// </summary>
+    IEnumerator GemPerfectSequence(int gemQuality)
+    {
+        isRevealing = true;
+
+        // 1단계: 카메라를 보석 위치로 이동
+        yield return StartCoroutine(MoveCameraToGem());
+
+        // 2단계: 보석 생성 및 등장 효과
+        yield return StartCoroutine(SpawnGemWithEffect(gemQuality));
+
+        // 3단계: 완벽 회전 연출 (더 화려하게)
+        yield return StartCoroutine(RotateGemPerfect());
+
+        // 4단계: 완벽 메시지 표시
+        yield return StartCoroutine(ShowPerfectMessage());
+
+        // 5단계: 카메라를 원래 위치로 복구
+        yield return StartCoroutine(ReturnCameraToOriginal());
+
+        isRevealing = false;
+    }
+
+    /// <summary>
+    /// 보석 공개 연출 시퀀스 (기존 - 파괴 포함)
     /// </summary>
     IEnumerator GemRevealSequence(int gemQuality)
     {
@@ -277,6 +348,113 @@ public class GemRevealSystem : MonoBehaviour
     }
 
     /// <summary>
+    /// 70% 성공 회전 연출 - 한바퀴 회전
+    /// </summary>
+    IEnumerator RotateGemSuccess()
+    {
+        if (actualGem == null) yield break;
+
+        float rotationTime = 3f; // 3초에 걸쳐 회전
+        float elapsedTime = 0f;
+        Vector3 startRotation = actualGem.transform.eulerAngles;
+
+        // Y축으로 360도 회전
+        while (elapsedTime < rotationTime)
+        {
+            float t = elapsedTime / rotationTime;
+            float yRotation = Mathf.Lerp(0f, 360f, t);
+
+            actualGem.transform.rotation = Quaternion.Euler(
+                startRotation.x,
+                startRotation.y + yRotation,
+                startRotation.z
+            );
+
+            elapsedTime += Time.deltaTime;
+            yield return null;
+        }
+
+        // 최종 회전값 정확히 설정
+        actualGem.transform.rotation = Quaternion.Euler(
+            startRotation.x,
+            startRotation.y + 360f,
+            startRotation.z
+        );
+    }
+
+    /// <summary>
+    /// 100% 완료 회전 연출 - 화려한 회전 + 상하 움직임
+    /// </summary>
+    IEnumerator RotateGemPerfect()
+    {
+        if (actualGem == null) yield break;
+
+        float rotationTime = 4f; // 4초에 걸쳐 회전
+        float elapsedTime = 0f;
+        Vector3 startRotation = actualGem.transform.eulerAngles;
+        Vector3 startPosition = actualGem.transform.position;
+
+        // Y축으로 720도 회전 + 상하 움직임
+        while (elapsedTime < rotationTime)
+        {
+            float t = elapsedTime / rotationTime;
+            float yRotation = Mathf.Lerp(0f, 720f, t); // 2바퀴 회전
+
+            // 회전
+            actualGem.transform.rotation = Quaternion.Euler(
+                startRotation.x,
+                startRotation.y + yRotation,
+                startRotation.z
+            );
+
+            // 상하 움직임 (사인파)
+            float yOffset = Mathf.Sin(t * Mathf.PI * 4) * 0.1f; // 4번 위아래 움직임
+            actualGem.transform.position = startPosition + Vector3.up * yOffset;
+
+            elapsedTime += Time.deltaTime;
+            yield return null;
+        }
+
+        // 최종 위치/회전 정확히 설정
+        actualGem.transform.position = startPosition;
+        actualGem.transform.rotation = Quaternion.Euler(
+            startRotation.x,
+            startRotation.y + 720f,
+            startRotation.z
+        );
+    }
+
+    /// <summary>
+    /// 성공 메시지 표시
+    /// </summary>
+    IEnumerator ShowSuccessMessage()
+    {
+        Debug.Log("🎉 채굴 성공! 보석을 성공적으로 보존했습니다!");
+
+        // TODO: 실제 UI 텍스트 표시
+        // - "채굴 성공!" 메시지
+        // - 보석 보존 성공 알림
+        // - 획득 점수 표시
+
+        yield return new WaitForSeconds(2f); // 2초간 메시지 표시
+    }
+
+    /// <summary>
+    /// 완벽 메시지 표시
+    /// </summary>
+    IEnumerator ShowPerfectMessage()
+    {
+        Debug.Log("🏆 완벽한 채굴! 보석을 완벽하게 보존했습니다!");
+
+        // TODO: 실제 UI 텍스트 표시
+        // - "완벽한 채굴!" 메시지
+        // - 보너스 점수 강조
+        // - 특별 달성 효과
+
+        yield return new WaitForSeconds(2.5f); // 2.5초간 메시지 표시
+    }
+
+    /// <summary>
     /// 품질에 따른 보석 선택 (현재는 사용하지 않음 - actualGem 사용)
     /// </summary>
     GameObject SelectGemByQuality(int quality)
@@ -377,38 +555,6 @@ public class GemRevealSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Test.cs의 MineAtPoint와 동일한 로직 (간단 버전)
-    /// </summary>
-    void ApplyDirectMiningImpact(Vector3 miningPoint, Vector3 surfaceNormal)
-    {
-        // 보석의 모든 ChunkNode 찾기
-        ChunkNode[] chunks = actualGem.GetComponentsInChildren<ChunkNode>();
-
-        Debug.Log($"보석에서 {chunks.Length}개의 ChunkNode 발견");
-
-        if (chunks.Length == 0)
-        {
-            Debug.LogError("actualGem에 ChunkNode가 없습니다!");
-            return;
-        }
-
-        // Test.cs와 동일한 방식으로 조각 제거
-        foreach (ChunkNode chunk in chunks)
-        {
-            if (chunk != null && chunk.gameObject != null)
-            {
-                // 연결 끊기
-                BreakChunkConnections(chunk);
-
-                // 물리 힘 적용
-                ApplyGentleForce(chunk, surfaceNormal);
-
-                Debug.Log($"ChunkNode {chunk.name} 파괴 처리 완료");
-            }
-        }
-    }
-
-    /// <summary>
     /// Test.cs의 BreakChunkConnections와 동일
     /// </summary>
     void BreakChunkConnections(ChunkNode chunk)
@@ -461,8 +607,6 @@ public class GemRevealSystem : MonoBehaviour
         // 마우스 클릭과 같은 충격 적용
         SimulateMouseClick();
     }
-
-
 
     /// <summary>
     /// 간단한 파괴 효과 (LibreFracture가 없는 경우)
@@ -522,26 +666,5 @@ public class GemRevealSystem : MonoBehaviour
         // 최종 위치 정확히 설정
         mainCamera.transform.position = originalPosition;
         mainCamera.transform.rotation = originalRotation;
-    }
-
-    /// <summary>
-    /// 수동으로 연출 테스트
-    /// </summary>
-    [ContextMenu("보석 미리보기 테스트")]
-    public void TestGemPreview()
-    {
-        StartGemPreview();
-    }
-
-    [ContextMenu("보석 연출 테스트")]
-    public void TestGemReveal()
-    {
-        StartGemReveal(75); // 75점 품질로 테스트
-    }
-
-    [ContextMenu("보석 파괴 테스트")]
-    public void TestGemDestruction()
-    {
-        StartGemDestruction();
     }
 }
