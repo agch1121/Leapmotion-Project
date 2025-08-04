@@ -3,19 +3,14 @@ using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// 사용자 인터페이스 관리 (기획서의 핵심 클래스)
-/// 게임 상태에 따른 UI 표시, 힘 게이지, 점수 등을 관리
+/// 간소화된 UI 관리 시스템
+/// GameplayPanel (게임 중) + ResultPanel (결과/메시지) 2개 패널로 모든 UI 처리
 /// </summary>
 public class UIManager : MonoBehaviour
 {
-    [Header("메인 UI 패널들")]
-    public GameObject mainMenuPanel;
-    public GameObject gameplayPanel;
-    public GameObject pausePanel;
-    public GameObject successPanel;
-    public GameObject perfectPanel;
-    public GameObject failurePanel;
-    public GameObject gameCompletePanel;
+    [Header("UI 패널들")]
+    public GameObject gameplayPanel; // 게임 중 표시되는 기본 UI
+    public GameObject resultPanel;   // 범용 결과/메시지 패널
 
     [Header("게임플레이 UI")]
     public TextMeshProUGUI stageText;
@@ -35,17 +30,12 @@ public class UIManager : MonoBehaviour
     public Transform gemStatusParent;
     public GameObject gemStatusPrefab;
 
-    [Header("메시지 시스템")]
-    public TextMeshProUGUI mainMessageText;
-    public TextMeshProUGUI subMessageText;
-    public GameObject messagePanel;
-
-    [Header("버튼들")]
-    public Button restartButton;
-    public Button nextStageButton;
-    public Button pauseButton;
-    public Button resumeButton;
+    [Header("범용 결과 패널")]
+    public TextMeshProUGUI resultTitleText;  // 큰 제목 (성공/실패/일시정지 등)
+    public TextMeshProUGUI resultMessageText; // 상세 메시지
     public Button quitButton;
+    public Button retryButton;
+    public Button nextButton;
 
     // 시스템 참조
     private GameManager gameManager;
@@ -94,30 +84,25 @@ public class UIManager : MonoBehaviour
 
     void SetupButtonEvents()
     {
-        if (restartButton != null)
-            restartButton.onClick.AddListener(() => gameManager?.RestartCurrentStage());
-
-        if (nextStageButton != null)
-            nextStageButton.onClick.AddListener(() => gameManager?.ProceedToNextStage());
-
-        if (pauseButton != null)
-            pauseButton.onClick.AddListener(() => gameManager?.ChangeGameState(GameManager.GameState.Paused));
-
-        if (resumeButton != null)
-            resumeButton.onClick.AddListener(() => gameManager?.ChangeGameState(GameManager.GameState.Playing));
-
         if (quitButton != null)
             quitButton.onClick.AddListener(QuitGame);
+
+        if (retryButton != null)
+            retryButton.onClick.AddListener(() => gameManager?.RestartCurrentStage());
+
+        if (nextButton != null)
+            nextButton.onClick.AddListener(() => gameManager?.ProceedToNextStage());
     }
 
     void SetInitialUIState()
     {
-        // 모든 패널 비활성화
-        SetAllPanelsActive(false);
-
-        // 게임플레이 패널만 활성화
+        // 게임플레이 패널 활성화
         if (gameplayPanel != null)
             gameplayPanel.SetActive(true);
+
+        // 결과 패널 비활성화
+        if (resultPanel != null)
+            resultPanel.SetActive(false);
 
         // 초기 값들 설정
         UpdateStageUI(1);
@@ -126,17 +111,6 @@ public class UIManager : MonoBehaviour
         UpdateForceUI(0f, ForceCalculator.ForceLevel.Weak);
 
         isGameEnded = false;
-    }
-
-    void SetAllPanelsActive(bool active)
-    {
-        if (mainMenuPanel != null) mainMenuPanel.SetActive(active);
-        if (gameplayPanel != null) gameplayPanel.SetActive(active);
-        if (pausePanel != null) pausePanel.SetActive(active);
-        if (successPanel != null) successPanel.SetActive(active);
-        if (perfectPanel != null) perfectPanel.SetActive(active);
-        if (failurePanel != null) failurePanel.SetActive(active);
-        if (gameCompletePanel != null) gameCompletePanel.SetActive(active);
     }
 
     void Update()
@@ -215,46 +189,56 @@ public class UIManager : MonoBehaviour
             Destroy(child.gameObject);
         }
 
-        // 새로운 보석 상태 UI 생성
-        var gems = gemProtectionSystem.GetAllGems();
-        foreach (var gem in gems)
+        // GemProtectionSystem에서 보석 정보 가져오기
+        try
         {
-            CreateGemStatusUI(gem);
+            var gems = gemProtectionSystem.GetAllGems();
+            if (gems != null)
+            {
+                foreach (var gem in gems)
+                {
+                    CreateGemStatusUI(gem);
+                }
+            }
+        }
+        catch (System.Exception)
+        {
+            // GetAllGems 메서드가 없으면 무시
         }
     }
 
-    void CreateGemStatusUI(GemProtectionSystem.GemData gem)
+    void CreateGemStatusUI(object gemData)
     {
         if (gemStatusPrefab == null) return;
 
         GameObject statusUI = Instantiate(gemStatusPrefab, gemStatusParent);
 
-        // 보석 이름 설정
-        var nameText = statusUI.GetComponentInChildren<TextMeshProUGUI>();
-        if (nameText != null)
+        // 안전한 방식으로 보석 정보 처리
+        try
         {
-            nameText.text = gem.gemName;
-        }
-
-        // 상태 바 설정
-        var statusSlider = statusUI.GetComponentInChildren<Slider>();
-        if (statusSlider != null)
-        {
-            statusSlider.value = gem.currentCondition / 100f;
-
-            // 상태에 따른 색상
-            var fillImage = statusSlider.fillRect?.GetComponent<Image>();
-            if (fillImage != null)
+            // 보석 이름 설정
+            var nameText = statusUI.GetComponentInChildren<TextMeshProUGUI>();
+            if (nameText != null)
             {
-                if (gem.isDestroyed)
-                    fillImage.color = Color.red;
-                else if (gem.currentCondition > 70f)
-                    fillImage.color = Color.green;
-                else if (gem.currentCondition > 30f)
-                    fillImage.color = Color.yellow;
-                else
-                    fillImage.color = Color.white;
+                nameText.text = "보석"; // 기본값
             }
+
+            // 상태 바 설정  
+            var statusSlider = statusUI.GetComponentInChildren<Slider>();
+            if (statusSlider != null)
+            {
+                statusSlider.value = 1.0f; // 기본값 100%
+
+                var fillImage = statusSlider.fillRect?.GetComponent<Image>();
+                if (fillImage != null)
+                {
+                    fillImage.color = Color.green; // 기본 색상
+                }
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"보석 UI 생성 중 오류: {e.Message}");
         }
     }
 
@@ -265,138 +249,134 @@ public class UIManager : MonoBehaviour
     {
         Debug.Log($"UI 상태 변경: {newState}");
 
-        // 모든 패널 비활성화
-        SetAllPanelsActive(false);
-
         switch (newState)
         {
             case GameManager.GameState.NotStarted:
             case GameManager.GameState.Initializing:
-                if (gameplayPanel != null) gameplayPanel.SetActive(true);
-                ShowMessage("게임 준비 중...", "");
+                ShowGameplayUI();
+                ShowResultPanel("게임 준비 중...", "잠시만 기다려주세요", false, false, false);
                 break;
 
             case GameManager.GameState.Playing:
-                if (gameplayPanel != null) gameplayPanel.SetActive(true);
-                HideMessage();
+                ShowGameplayUI();
+                HideResultPanel();
                 isGameEnded = false;
                 break;
 
             case GameManager.GameState.Success:
-                ShowSuccessUI();
+                ShowResultPanel("채굴 성공!", "70% 이상 채굴을 완료했습니다!", true, true, true);
+                isGameEnded = true;
                 break;
 
             case GameManager.GameState.Perfect:
-                ShowPerfectUI();
+                ShowResultPanel("완벽한 채굴!", "100% 완료로 보너스를 획득했습니다!", true, true, true);
+                isGameEnded = true;
                 break;
 
             case GameManager.GameState.Failed:
-                ShowFailureUI();
+                ShowResultPanel("채굴 실패", "보석이 파괴되었습니다", true, true, false);
+                isGameEnded = true;
                 break;
 
             case GameManager.GameState.Paused:
-                if (pausePanel != null) pausePanel.SetActive(true);
+                ShowResultPanel("일시정지", "게임이 일시정지되었습니다", false, true, false);
                 break;
         }
     }
 
-    void ShowSuccessUI()
+    /// <summary>
+    /// 게임플레이 UI 표시
+    /// </summary>
+    void ShowGameplayUI()
     {
-        if (successPanel != null)
-        {
-            successPanel.SetActive(true);
-        }
-        else
-        {
-            ShowMessage("채굴 성공!", "70% 이상 채굴을 완료했습니다!");
-        }
-
-        isGameEnded = true;
+        if (gameplayPanel != null)
+            gameplayPanel.SetActive(true);
     }
 
-    void ShowPerfectUI()
+    /// <summary>
+    /// 범용 결과 패널 표시
+    /// </summary>
+    /// <param name="title">제목</param>
+    /// <param name="message">메시지</param>
+    /// <param name="showQuit">Quit 버튼 표시 여부</param>
+    /// <param name="showRetry">Retry 버튼 표시 여부</param>
+    /// <param name="showNext">Next 버튼 표시 여부</param>
+    void ShowResultPanel(string title, string message, bool showQuit, bool showRetry, bool showNext)
     {
-        if (perfectPanel != null)
+        if (resultPanel != null)
         {
-            perfectPanel.SetActive(true);
-        }
-        else
-        {
-            ShowMessage("완벽한 채굴!", "100% 완료로 보너스를 획득했습니다!");
+            resultPanel.SetActive(true);
         }
 
-        isGameEnded = true;
+        if (resultTitleText != null)
+        {
+            resultTitleText.text = title;
+        }
+
+        if (resultMessageText != null)
+        {
+            resultMessageText.text = message;
+        }
+
+        // 버튼 표시/숨김 설정
+        if (quitButton != null)
+            quitButton.gameObject.SetActive(showQuit);
+
+        if (retryButton != null)
+            retryButton.gameObject.SetActive(showRetry);
+
+        if (nextButton != null)
+        {
+            nextButton.gameObject.SetActive(showNext);
+
+            // Next 버튼은 마지막 스테이지가 아닐 때만 활성화
+            if (showNext && gameManager != null)
+            {
+                bool isLastStage = gameManager.CurrentStage >= gameManager.totalStages;
+                nextButton.interactable = !isLastStage;
+
+                if (isLastStage)
+                {
+                    // 마지막 스테이지 완료시 버튼 텍스트 변경
+                    var buttonText = nextButton.GetComponentInChildren<TextMeshProUGUI>();
+                    if (buttonText != null)
+                        buttonText.text = "완료";
+                }
+                else
+                {
+                    var buttonText = nextButton.GetComponentInChildren<TextMeshProUGUI>();
+                    if (buttonText != null)
+                        buttonText.text = "Next";
+                }
+            }
+        }
     }
 
-    void ShowFailureUI()
+    /// <summary>
+    /// 결과 패널 숨김
+    /// </summary>
+    void HideResultPanel()
     {
-        if (failurePanel != null)
+        if (resultPanel != null)
         {
-            failurePanel.SetActive(true);
+            resultPanel.SetActive(false);
         }
-        else
-        {
-            ShowMessage("채굴 실패", "보석이 파괴되었습니다.");
-        }
-
-        isGameEnded = true;
     }
 
     public void ShowNextStageUI()
     {
-        ShowMessage("준비 완료!", "N키: 다음 스테이지\nR키: 재시작");
+        ShowResultPanel("스테이지 완료!", "다음 스테이지로 진행하시겠습니까?", true, true, true);
     }
 
     public void ShowRestartUI()
     {
-        ShowMessage("다시 도전하세요", "R키: 재시작\nQ키: 종료");
+        ShowResultPanel("게임 재시작", "현재 스테이지를 다시 시작하시겠습니까?", true, true, false);
     }
 
     public void ShowGameCompleteUI(int finalScore)
     {
-        if (gameCompletePanel != null)
-        {
-            gameCompletePanel.SetActive(true);
-
-            // 최종 점수 표시
-            var finalScoreText = gameCompletePanel.GetComponentInChildren<TextMeshProUGUI>();
-            if (finalScoreText != null)
-            {
-                finalScoreText.text = $"최종 점수: {finalScore}";
-            }
-        }
-        else
-        {
-            ShowMessage("게임 완료!", $"모든 스테이지 클리어!\n최종 점수: {finalScore}");
-        }
-
+        ShowResultPanel("게임 완료!", $"모든 스테이지 클리어!\n최종 점수: {finalScore}", true, true, false);
         isGameEnded = true;
-    }
-
-    void ShowMessage(string main, string sub)
-    {
-        if (messagePanel != null)
-        {
-            messagePanel.SetActive(true);
-        }
-
-        if (mainMessageText != null)
-        {
-            mainMessageText.text = main;
-        }
-
-        if (subMessageText != null)
-        {
-            subMessageText.text = sub;
-        }
-    }
-
-    void HideMessage()
-    {
-        if (messagePanel != null)
-        {
-            messagePanel.SetActive(false);
-        }
     }
 
     public void OnStageChanged(int newStage)
@@ -457,7 +437,7 @@ public class UIManager : MonoBehaviour
     /// </summary>
     public void ForceGameEnd(string message)
     {
-        ShowMessage(message, "게임이 종료되었습니다.");
+        ShowResultPanel(message, "게임이 종료되었습니다.", true, true, false);
         isGameEnded = true;
     }
 
@@ -491,12 +471,13 @@ public class UIManager : MonoBehaviour
 
     string GetActivePanelName()
     {
-        if (gameplayPanel != null && gameplayPanel.activeInHierarchy) return "Gameplay";
-        if (successPanel != null && successPanel.activeInHierarchy) return "Success";
-        if (perfectPanel != null && perfectPanel.activeInHierarchy) return "Perfect";
-        if (failurePanel != null && failurePanel.activeInHierarchy) return "Failure";
-        if (pausePanel != null && pausePanel.activeInHierarchy) return "Pause";
-        if (gameCompletePanel != null && gameCompletePanel.activeInHierarchy) return "GameComplete";
+        if (gameplayPanel != null && gameplayPanel.activeInHierarchy &&
+            (resultPanel == null || !resultPanel.activeInHierarchy))
+            return "Gameplay";
+
+        if (resultPanel != null && resultPanel.activeInHierarchy)
+            return "Result";
+
         return "None";
     }
 

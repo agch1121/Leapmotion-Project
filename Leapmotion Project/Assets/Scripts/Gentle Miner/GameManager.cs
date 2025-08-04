@@ -8,7 +8,7 @@ using System.Collections;
 public class GameManager : MonoBehaviour
 {
     [Header("게임 설정")]
-    public int totalStages = 3; // 총 스테이지 수
+    [SerializeField] public int totalStages = 3; // 총 스테이지 수 (UI에서 접근용)
     public float successThreshold = 0.7f; // 70% 성공 기준
     public bool allowPartialSuccess = true; // 70% 성공 허용 여부
 
@@ -106,12 +106,7 @@ public class GameManager : MonoBehaviour
             chunkCounter.OnChunkCountChanged += OnChunkCountChanged;
         }
 
-        // 보석 파괴 감지 (GemProtectionSystem에서 구현 필요)
-        if (gemProtectionSystem != null)
-        {
-            // TODO: 보석 파괴 이벤트 구독
-        }
-
+        // 보석 파괴는 폴링 방식으로 체크 (Update에서 처리)
         Debug.Log("이벤트 구독 완료");
     }
 
@@ -217,7 +212,7 @@ public class GameManager : MonoBehaviour
 
     void CheckWinConditions(float progress, int activeChunks)
     {
-        // 이미 성공/완료 상태면 체크 안함
+        // 이미 성공/완료/실패 상태면 체크 안함
         if (currentState == GameState.Success ||
             currentState == GameState.Perfect ||
             currentState == GameState.Failed)
@@ -225,12 +220,7 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        // 보석이 파괴되었는지 체크
-        if (gemProtectionSystem != null && gemProtectionSystem.HasAnyGemDestroyed())
-        {
-            ChangeGameState(GameState.Failed);
-            return;
-        }
+        // 보석 파괴 체크는 CheckGemDestructionStatus에서 별도 처리
 
         // 70% 성공 체크
         if (allowPartialSuccess && progress >= successThreshold && progress < 1.0f)
@@ -423,6 +413,28 @@ public class GameManager : MonoBehaviour
     {
         // 디버그 키 입력
         HandleDebugInput();
+
+        // 게임 중일 때만 보석 상태 체크
+        if (currentState == GameState.Playing)
+        {
+            CheckGemDestructionStatus();
+        }
+    }
+
+    /// <summary>
+    /// 보석 파괴 상태를 주기적으로 체크 (폴링 방식)
+    /// </summary>
+    void CheckGemDestructionStatus()
+    {
+        if (gemProtectionSystem != null && gemProtectionSystem.HasAnyGemDestroyed())
+        {
+            // 보석이 파괴되었으면 게임 실패 처리
+            if (currentState == GameState.Playing)
+            {
+                Debug.Log("보석 파괴 감지 - 게임 실패 처리");
+                ChangeGameState(GameState.Failed);
+            }
+        }
     }
 
     void HandleDebugInput()
