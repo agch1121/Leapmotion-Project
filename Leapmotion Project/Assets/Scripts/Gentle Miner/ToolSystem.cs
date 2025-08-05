@@ -4,40 +4,39 @@ using System.Collections;
 
 /// <summary>
 /// 끌(Chisel) + 망치(Hammer) 상호작용 시스템
-/// HandController와 ForceCalculator를 연동하여 정밀한 채굴 수행
+/// 영구 Manager 오브젝트에 붙어서 동적으로 현재 광물 블록 참조
 /// </summary>
 public class ToolSystem : MonoBehaviour
 {
     [Header("도구 시각적 표현")]
-    public GameObject chiselPrefab; // 끌 프리팹
-    public GameObject hammerPrefab; // 망치 프리팹
-    public LineRenderer chiselGuideLine; // 끌 가이드라인
+    public GameObject chiselPrefab;
+    public GameObject hammerPrefab;
+    public LineRenderer chiselGuideLine;
 
     [Header("채굴 설정")]
-    public LayerMask chunkLayer = -1; // 채굴 대상 레이어
-    public float miningRadius = 0.3f; // 채굴 범위
-    public int chunksPerStrike = 2; // 타격당 제거할 조각 수
-    public float chiselRayDistance = 2f; // 끌 레이캐스트 거리
+    public LayerMask chunkLayer = -1;
+    public float miningRadius = 0.1f;
+    public int chunksPerStrike = 2;
+    public float chiselRayDistance = 2f;
 
     [Header("시각적 가이드")]
-    public bool showChiselPreview = true; // 채굴 지점 미리보기
-    public GameObject previewSphere; // 채굴 지점 미리보기 구체
-    public Material safePreviewMaterial; // 안전한 힘일 때 재질
-    public Material dangerPreviewMaterial; // 위험한 힘일 때 재질
+    public bool showChiselPreview = true;
+    public GameObject previewSphere;
+    public Material safePreviewMaterial;
+    public Material dangerPreviewMaterial;
 
     [Header("채굴 효과")]
     public AudioClip miningSound;
     public AudioClip[] chunkFallSounds;
-    public ParticleSystem miningParticleEffect; // 채굴 파티클
+    public ParticleSystem miningParticleEffect;
 
     [Header("안전 시스템")]
-    public bool enableSafetySystem = true; // 안전 시스템 활성화
-    public float maxSafeDistance = 3f; // 도구 최대 안전 거리
+    public bool enableSafetySystem = true;
+    public float maxSafeDistance = 3f;
 
     // 시스템 참조
     private HandController handController;
     private ForceCalculator forceCalculator;
-    private GemProtectionSystem gemProtectionSystem;
     private AudioSource audioSource;
 
     // 도구 상태
@@ -49,7 +48,7 @@ public class ToolSystem : MonoBehaviour
     // 채굴 중 상태
     private bool isMining = false;
     private float lastMiningTime = 0f;
-    private float miningCooldown = 0.5f; // 연속 채굴 방지
+    private float miningCooldown = 0.5f;
 
     void Start()
     {
@@ -61,7 +60,6 @@ public class ToolSystem : MonoBehaviour
         // 시스템 참조 가져오기
         handController = FindFirstObjectByType<HandController>();
         forceCalculator = FindFirstObjectByType<ForceCalculator>();
-        gemProtectionSystem = FindFirstObjectByType<GemProtectionSystem>();
 
         if (handController == null)
         {
@@ -90,8 +88,6 @@ public class ToolSystem : MonoBehaviour
 
         // 미리보기 구체 설정
         SetupPreviewSphere();
-
-        Debug.Log("ToolSystem 초기화 완료");
     }
 
     void CreateToolInstances()
@@ -120,6 +116,7 @@ public class ToolSystem : MonoBehaviour
         chiselGuideLine.startWidth = 0.01f;
         chiselGuideLine.endWidth = 0.01f;
         chiselGuideLine.positionCount = 2;
+        chiselGuideLine.useWorldSpace = true;
     }
 
     void SetupPreviewSphere()
@@ -129,8 +126,6 @@ public class ToolSystem : MonoBehaviour
             previewSphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             previewSphere.name = "ChiselPreview";
             previewSphere.transform.localScale = Vector3.one * 0.1f;
-
-            // 콜라이더 제거 (시각적 표시용만)
             Destroy(previewSphere.GetComponent<Collider>());
         }
 
@@ -160,9 +155,6 @@ public class ToolSystem : MonoBehaviour
         HandleSafetySystem();
     }
 
-    /// <summary>
-    /// 손 위치에 따라 도구 위치 업데이트
-    /// </summary>
     void UpdateToolPositions()
     {
         // 끌 위치 업데이트 (왼손)
@@ -184,11 +176,19 @@ public class ToolSystem : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 끌이 가리키는 채굴 대상 지점 업데이트
-    /// </summary>
     void UpdateChiselTarget()
     {
+        // 현재 활성 광물 블록 찾기
+        GameObject currentMineralBlock = FindCurrentMineralBlock();
+
+        if (currentMineralBlock == null)
+        {
+            isChiselTargetValid = false;
+            currentChiselTarget = handController.LeftHandPosition +
+                                (handController.LeftHandRotation * Vector3.forward * 0.5f);
+            return;
+        }
+
         Vector3 chiselPos = handController.LeftHandPosition;
         Vector3 chiselForward = handController.LeftHandRotation * Vector3.forward;
 
@@ -198,8 +198,8 @@ public class ToolSystem : MonoBehaviour
         // 채굴 대상(광물 블록)에 레이캐스트
         if (Physics.Raycast(chiselRay, out hit, chiselRayDistance, chunkLayer))
         {
-            // 이 오브젝트의 자식인지 확인 (실제 채굴 대상)
-            if (hit.collider.transform.IsChildOf(transform))
+            // 현재 활성 광물 블록의 자식인지 확인
+            if (hit.collider.transform.IsChildOf(currentMineralBlock.transform))
             {
                 currentChiselTarget = hit.point;
                 isChiselTargetValid = true;
@@ -216,9 +216,25 @@ public class ToolSystem : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 시각적 가이드 업데이트
-    /// </summary>
+    GameObject FindCurrentMineralBlock()
+    {
+        // StageManager에서 현재 광물 블록 가져오기
+        StageManager stageManager = FindFirstObjectByType<StageManager>();
+        if (stageManager != null)
+        {
+            return stageManager.GetCurrentMineralBlock();
+        }
+
+        // 백업: ChunkGraphManager가 있는 오브젝트 찾기
+        ChunkGraphManager chunkManager = FindFirstObjectByType<ChunkGraphManager>();
+        if (chunkManager != null)
+        {
+            return chunkManager.gameObject;
+        }
+
+        return null;
+    }
+
     void UpdateVisualGuides()
     {
         // 끌 가이드라인 업데이트
@@ -228,8 +244,9 @@ public class ToolSystem : MonoBehaviour
             chiselGuideLine.SetPosition(1, currentChiselTarget);
 
             // 유효한 타겟인지에 따라 색상 변경
-            chiselGuideLine.startColor = isChiselTargetValid ? Color.green : Color.gray;
-            chiselGuideLine.endColor = isChiselTargetValid ? Color.green : Color.gray;
+            Color lineColor = isChiselTargetValid ? Color.green : Color.gray;
+            chiselGuideLine.startColor = lineColor;
+            chiselGuideLine.endColor = lineColor;
         }
 
         // 채굴 지점 미리보기 업데이트
@@ -253,32 +270,27 @@ public class ToolSystem : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 안전 시스템 처리
-    /// </summary>
     void HandleSafetySystem()
     {
         if (!enableSafetySystem) return;
 
-        // 도구가 너무 멀리 떨어지면 안전 위치로 복귀
-        Vector3 centerPos = transform.position;
+        // 현재 광물 블록 위치 기준으로 안전 거리 체크
+        GameObject currentMineralBlock = FindCurrentMineralBlock();
+        if (currentMineralBlock == null) return;
+
+        Vector3 centerPos = currentMineralBlock.transform.position;
 
         if (Vector3.Distance(handController.LeftHandPosition, centerPos) > maxSafeDistance)
         {
             Debug.LogWarning("끌이 안전 거리를 벗어났습니다!");
-            // TODO: 도구 자동 복귀 로직
         }
 
         if (Vector3.Distance(handController.RightHandPosition, centerPos) > maxSafeDistance)
         {
             Debug.LogWarning("망치가 안전 거리를 벗어났습니다!");
-            // TODO: 도구 자동 복귀 로직
         }
     }
 
-    /// <summary>
-    /// 망치 타격 이벤트 처리 (HandController에서 호출)
-    /// </summary>
     void OnHammerStrike(Vector3 strikePosition, Vector3 strikeDirection, float gripStrength)
     {
         // 채굴 쿨다운 확인
@@ -301,32 +313,34 @@ public class ToolSystem : MonoBehaviour
         lastMiningTime = Time.time;
     }
 
-    /// <summary>
-    /// 실제 채굴 실행 (Test.cs의 MineAtPoint 로직 활용)
-    /// </summary>
     void ExecuteMining(Vector3 miningPoint, Vector3 surfaceNormal)
     {
         isMining = true;
 
-        // 1. ForceCalculator에서 계산된 힘 가져오기
+        // ForceCalculator에서 계산된 힘 가져오기
         float calculatedForce = forceCalculator?.GetGemProtectionForce() ?? 20f;
 
-        // 2. 보석 보호 시스템에 충격 전달
-        if (gemProtectionSystem != null)
+        // 현재 광물의 보석 보호 시스템에 충격 전달
+        GameObject currentMineralBlock = FindCurrentMineralBlock();
+        if (currentMineralBlock != null)
         {
-            gemProtectionSystem.CheckMiningImpactOnGems(miningPoint, calculatedForce);
+            GemProtectionSystem gemProtectionSystem = currentMineralBlock.GetComponent<GemProtectionSystem>();
+            if (gemProtectionSystem != null)
+            {
+                gemProtectionSystem.CheckMiningImpactOnGems(miningPoint, calculatedForce);
+            }
         }
 
-        // 3. 채굴 효과 생성
+        // 채굴 효과 생성
         CreateMiningEffect(miningPoint, surfaceNormal);
 
-        // 4. 채굴 사운드 재생
+        // 채굴 사운드 재생
         if (miningSound != null && audioSource != null)
         {
             audioSource.PlayOneShot(miningSound);
         }
 
-        // 5. 실제 조각 제거 (Test.cs 로직 참조)
+        // 실제 조각 제거
         RemoveChunksAtPoint(miningPoint);
 
         Debug.Log($"채굴 실행! 위치: {miningPoint}, 힘: {calculatedForce:F1}");
@@ -334,13 +348,13 @@ public class ToolSystem : MonoBehaviour
         isMining = false;
     }
 
-    /// <summary>
-    /// 특정 지점의 조각들을 부드럽게 제거
-    /// </summary>
     void RemoveChunksAtPoint(Vector3 miningPoint)
     {
-        // 모든 활성 조각 찾기
-        ChunkNode[] allChunks = GetComponentsInChildren<ChunkNode>();
+        // 현재 광물 블록의 조각들 찾기
+        GameObject currentMineralBlock = FindCurrentMineralBlock();
+        if (currentMineralBlock == null) return;
+
+        ChunkNode[] allChunks = currentMineralBlock.GetComponentsInChildren<ChunkNode>();
         var activeChunks = System.Array.FindAll(allChunks, chunk =>
             chunk != null &&
             chunk.gameObject != null &&
@@ -370,13 +384,8 @@ public class ToolSystem : MonoBehaviour
                 removedCount++;
             }
         }
-
-        Debug.Log($"조각 {removedCount}개 채굴됨");
     }
 
-    /// <summary>
-    /// 조각을 부드럽게 제거 (Test.cs 로직 참조)
-    /// </summary>
     void RemoveChunkGently(ChunkNode chunk, Vector3 miningPoint)
     {
         if (chunk == null) return;
@@ -413,9 +422,6 @@ public class ToolSystem : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 채굴 효과 생성 (Test.cs 로직 참조)
-    /// </summary>
     void CreateMiningEffect(Vector3 position, Vector3 normal)
     {
         // 파티클 시스템이 있으면 사용
@@ -462,7 +468,7 @@ public class ToolSystem : MonoBehaviour
         }
     }
 
-    System.Collections.IEnumerator PlayDelayedFallSound(float delay)
+    IEnumerator PlayDelayedFallSound(float delay)
     {
         yield return new WaitForSeconds(delay);
 
@@ -471,22 +477,6 @@ public class ToolSystem : MonoBehaviour
             AudioClip fallSound = chunkFallSounds[Random.Range(0, chunkFallSounds.Length)];
             audioSource.PlayOneShot(fallSound, 0.5f);
         }
-    }
-
-    /// <summary>
-    /// 현재 도구 상태 디버그 출력
-    /// </summary>
-    [ContextMenu("도구 상태 출력")]
-    public void PrintToolStatus()
-    {
-        Debug.Log("=== 도구 상태 ===");
-        Debug.Log($"끌 위치: {handController?.LeftHandPosition}");
-        Debug.Log($"망치 위치: {handController?.RightHandPosition}");
-        Debug.Log($"채굴 대상 유효: {isChiselTargetValid}");
-        Debug.Log($"채굴 지점: {currentChiselTarget}");
-        Debug.Log($"현재 힘: {forceCalculator?.CurrentForce:F2}");
-        Debug.Log($"안전 여부: {forceCalculator?.IsSafeForce()}");
-        Debug.Log("================");
     }
 
     void OnDrawGizmos()
@@ -503,8 +493,12 @@ public class ToolSystem : MonoBehaviour
         // 안전 거리 시각화
         if (enableSafetySystem)
         {
-            Gizmos.color = Color.yellow;
-            Gizmos.DrawWireSphere(transform.position, maxSafeDistance);
+            GameObject currentMineralBlock = FindCurrentMineralBlock();
+            if (currentMineralBlock != null)
+            {
+                Gizmos.color = Color.yellow;
+                Gizmos.DrawWireSphere(currentMineralBlock.transform.position, maxSafeDistance);
+            }
         }
     }
 

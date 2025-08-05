@@ -281,8 +281,6 @@ public class StageManager : MonoBehaviour
     void RegisterGemsToProtectionSystem(StageConfig config)
     {
         // GemProtectionSystem의 gems 배열 설정
-        // 이는 실제 GemProtectionSystem 구조에 맞춰 조정이 필요할 수 있습니다
-
         var gemDataList = new System.Collections.Generic.List<GemProtectionSystem.GemData>();
 
         for (int i = 0; i < currentGems.Length; i++)
@@ -309,9 +307,8 @@ public class StageManager : MonoBehaviour
         {
             gemsField.SetValue(gemProtectionSystem, gemDataList.ToArray());
         }
-
-        Debug.Log($"{gemDataList.Count}개 보석을 보호 시스템에 등록");
     }
+
 
     void ApplyStageSettings(StageConfig config)
     {
@@ -320,11 +317,16 @@ public class StageManager : MonoBehaviour
         {
             mineralBlockScript.hardness = config.mineralHardness;
             mineralBlockScript.gemQuality = config.gemQuality;
-        }
 
-        Debug.Log($"스테이지 설정 적용: 경도 {config.mineralHardness}, 품질 {config.gemQuality}");
+            // 설정 변경 후 MineralBlock에서 실제 시스템에 적용
+            mineralBlockScript.ApplyStageSettings();
+        }
     }
 
+    public GameObject GetCurrentMineralBlock()
+    {
+        return currentMineralBlock;
+    }
     void CleanupFallenChunks()
     {
         // ChunkCleaner가 있으면 사용

@@ -471,23 +471,25 @@ public class GemRevealSystem : MonoBehaviour
     {
         if (actualGem == null) return;
 
-        Test testScript = FindFirstObjectByType<Test>();
-        if (testScript == null) return;
+        // 수정 전: MineralBlock testScript = FindFirstObjectByType<MineralBlock>();
+        // 수정 후: 더 명확한 변수명 사용
+        MineralBlock mineralBlock = FindFirstObjectByType<MineralBlock>();
+        if (mineralBlock == null) return;
 
         // 보석 중앙 지점과 표면 법선 계산
         Vector3 gemCenter = actualGem.transform.position;
         Vector3 surfaceNormal = Vector3.up;
 
-        // Test.cs의 MineAtPoint와 동일한 로직 직접 실행
+        // MineralBlock의 MineAtPoint와 동일한 로직 직접 실행
         // 1. 보석 보호 시스템에 충격 전달
-        GemProtectionSystem gemProtection = testScript.GetComponent<GemProtectionSystem>();
+        GemProtectionSystem gemProtection = mineralBlock.GetComponent<GemProtectionSystem>();
         if (gemProtection != null)
         {
             float miningForce = 20f;
             gemProtection.CheckMiningImpactOnGems(gemCenter, miningForce);
         }
 
-        // 2. 채굴 효과 생성 (Test.cs와 동일)
+        // 2. 채굴 효과 생성 (MineralBlock와 동일)
         CreateMiningEffect(gemCenter, surfaceNormal);
 
         // 3. 채굴 사운드 재생
@@ -496,17 +498,17 @@ public class GemRevealSystem : MonoBehaviour
             audioSource.PlayOneShot(gemBreakSound);
         }
 
-        // 4. ChunkNode 직접 파괴 (Test.cs의 RemoveChunkGently와 동일)
+        // 4. ChunkNode 직접 파괴 (MineralBlock의 RemoveChunkGently와 동일)
         ChunkNode[] chunks = actualGem.GetComponentsInChildren<ChunkNode>();
 
         foreach (ChunkNode chunk in chunks)
         {
             if (chunk != null && chunk.gameObject != null)
             {
-                // Test.cs와 동일한 방식으로 연결 끊기
+                // MineralBlock와 동일한 방식으로 연결 끊기
                 BreakChunkConnections(chunk);
 
-                // Test.cs와 동일한 방식으로 힘 적용
+                // MineralBlock와 동일한 방식으로 힘 적용
                 ApplyGentleForce(chunk, surfaceNormal);
             }
         }

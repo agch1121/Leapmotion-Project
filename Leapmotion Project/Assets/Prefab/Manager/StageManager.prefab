@@ -1,0 +1,86 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &5314800845678021077
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1674441524852541541}
+  - component: {fileID: 4269958562005650732}
+  m_Layer: 0
+  m_Name: StageManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1674441524852541541
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5314800845678021077}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.6605598, y: 1.5876956, z: -0.81959903}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4269958562005650732
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5314800845678021077}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: df8d12d1af6f64d4eab76cd821f8648f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  stageConfigs:
+  - stageName: "\uB2E4\uC774\uC544\uBAAC\uB4DC \uAD11\uC0B0"
+    description: "\uCCAB \uBC88\uC9F8 \uCC44\uAD74 \uB3C4\uC804"
+    mineralBlockPrefab: {fileID: 5148724340144632534, guid: 53ffc6cc994a0bd4c8f1b7029cf95752, type: 3}
+    mineralHardness: 1
+    gemPrefabs:
+    - {fileID: 2909557631237781958, guid: affdc15c28cb8bd4dbe2e7f404e10985, type: 3}
+    gemCount: 1
+    gemQuality: 1
+    gemProtectionRadius: 0.4
+    damageThreshold: 15
+    freeHitCount: 1
+    jointBreakForce: 50
+  - stageName: "\uB2E4\uC774\uC544\uBAAC\uB4DC \uAD11\uC0B0"
+    description: "\uCCAB \uBC88\uC9F8 \uCC44\uAD74 \uB3C4\uC804"
+    mineralBlockPrefab: {fileID: 0}
+    mineralHardness: 1
+    gemPrefabs: []
+    gemCount: 3
+    gemQuality: 1
+    gemProtectionRadius: 0.4
+    damageThreshold: 15
+    freeHitCount: 1
+    jointBreakForce: 50
+  - stageName: "\uB2E4\uC774\uC544\uBAAC\uB4DC \uAD11\uC0B0"
+    description: "\uCCAB \uBC88\uC9F8 \uCC44\uAD74 \uB3C4\uC804"
+    mineralBlockPrefab: {fileID: 0}
+    mineralHardness: 1
+    gemPrefabs: []
+    gemCount: 3
+    gemQuality: 1
+    gemProtectionRadius: 0.4
+    damageThreshold: 15
+    freeHitCount: 1
+    jointBreakForce: 50
+  mineralSpawnPoint: {fileID: 0}
+  gemSpawnPoints: []
+  currentStageIndex: 0
+  currentMineralBlock: {fileID: 0}
+  currentGems: []
