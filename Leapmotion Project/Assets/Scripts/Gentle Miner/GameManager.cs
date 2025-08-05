@@ -2,15 +2,15 @@
 using System.Collections;
 
 /// <summary>
-/// 전체 게임 흐름 및 상태 관리 (기획서의 핵심 클래스)
-/// 스테이지 진행, 게임 상태, 승리 조건 등을 총괄 관리
+/// 청크 기반 진행도 관리로 롤백된 GameManager
+/// MineralBlock의 ChunkCounter 이벤트를 다시 받아서 처리
 /// </summary>
 public class GameManager : MonoBehaviour
 {
     [Header("게임 설정")]
-    [SerializeField] public int totalStages = 3; // 총 스테이지 수 (UI에서 접근용)
+    [SerializeField] public int totalStages = 3;
     public float successThreshold = 0.7f; // 70% 성공 기준
-    public bool allowPartialSuccess = true; // 70% 성공 허용 여부
+    public bool allowPartialSuccess = true;
 
     [Header("게임 시작 설정")]
     public bool showGemPreviewOnStart = true;
@@ -19,13 +19,13 @@ public class GameManager : MonoBehaviour
     // 현재 게임 상태
     public enum GameState
     {
-        NotStarted,     // 게임 시작 전
-        Initializing,   // 초기화 중
-        Playing,        // 플레이 중
+        NotStarted,
+        Initializing,
+        Playing,
         Success,        // 70% 성공
         Perfect,        // 100% 완료
         Failed,         // 실패 (보석 파괴)
-        Paused          // 일시정지
+        Paused
     }
 
     [Header("현재 상태")]
@@ -34,15 +34,19 @@ public class GameManager : MonoBehaviour
     [SerializeField] private float currentProgress = 0f;
     [SerializeField] private int currentScore = 0;
 
+    // 게임 진행 상태 (기존 로직 복원)
+    private bool gameStarted = false;
+    private bool gameSucceeded = false;
+    private bool gameCompleted = false;
+    private bool gameInitialized = false;
+
     // 시스템 참조들
     private StageManager stageManager;
     private UIManager uiManager;
-    private ScoreSystem scoreSystem;
     private GemRevealSystem gemRevealSystem;
-    private ChunkCounter chunkCounter;
     private GemProtectionSystem gemProtectionSystem;
 
-    // 이벤트들
+    // 이벤트들 (기존 복원)
     public System.Action<GameState> OnGameStateChanged;
     public System.Action<int> OnStageChanged;
     public System.Action<float> OnProgressChanged;
@@ -54,6 +58,7 @@ public class GameManager : MonoBehaviour
     public float CurrentProgress => currentProgress;
     public int CurrentScore => currentScore;
     public bool IsGameActive => currentState == GameState.Playing;
+    public bool IsGameStarted => gameStarted;
 
     void Start()
     {
@@ -64,27 +69,17 @@ public class GameManager : MonoBehaviour
     {
         Debug.Log("=== GameManager 초기화 시작 ===");
 
-        // 시스템들 찾기
         FindSystemReferences();
-
-        // 이벤트 구독
         SubscribeToEvents();
-
-        // 게임 시작
         StartCoroutine(StartGameSequence());
     }
 
     void FindSystemReferences()
     {
-        // 핵심 시스템들 찾기
         stageManager = FindFirstObjectByType<StageManager>();
         uiManager = FindFirstObjectByType<UIManager>();
-        scoreSystem = FindFirstObjectByType<ScoreSystem>();
         gemRevealSystem = FindFirstObjectByType<GemRevealSystem>();
-        chunkCounter = FindFirstObjectByType<ChunkCounter>();
-        gemProtectionSystem = FindFirstObjectByType<GemProtectionSystem>();
 
-        // 필수 시스템 체크
         if (stageManager == null)
         {
             Debug.LogError("StageManager가 필요합니다!");
@@ -100,13 +95,8 @@ public class GameManager : MonoBehaviour
 
     void SubscribeToEvents()
     {
-        // ChunkCounter 이벤트 구독
-        if (chunkCounter != null)
-        {
-            chunkCounter.OnChunkCountChanged += OnChunkCountChanged;
-        }
-
-        // 보석 파괴는 폴링 방식으로 체크 (Update에서 처리)
+        // MineralBlock에서 오는 진행률 이벤트 구독은 
+        // MineralBlock이 생성될 때 동적으로 처리
         Debug.Log("이벤트 구독 완료");
     }
 
@@ -120,251 +110,254 @@ public class GameManager : MonoBehaviour
             stageManager.InitializeStage(currentStage);
         }
 
+        // 현재 광물의 보석 보호 시스템 찾기
+        yield return new WaitForSeconds(0.1f); // 광물 생성 대기
+        FindCurrentGemProtectionSystem();
+
         // 보석 미리보기 (옵션)
         if (showGemPreviewOnStart && gemRevealSystem != null)
         {
             yield return new WaitForSeconds(gameStartDelay);
             gemRevealSystem.StartGemPreview();
 
-            // 미리보기 시간 대기
             float previewDuration = (gemRevealSystem.cameraTransitionTime * 2) +
                                    gemRevealSystem.gemDisplayTime + 1f;
             yield return new WaitForSeconds(previewDuration);
         }
 
         // 게임 시작
+        gameStarted = true;
         ChangeGameState(GameState.Playing);
+
+        // 5초 후 초기화 완료 설정 (70% 성공 체크 버그 방지)
+        yield return new WaitForSeconds(5f);
+        gameInitialized = true;
+
         Debug.Log($"스테이지 {currentStage} 게임 시작!");
     }
 
-    /// <summary>
-    /// 게임 상태 변경
-    /// </summary>
-    public void ChangeGameState(GameState newState)
+    void FindCurrentGemProtectionSystem()
     {
-        if (currentState == newState) return;
-
-        GameState previousState = currentState;
-        currentState = newState;
-
-        Debug.Log($"게임 상태 변경: {previousState} → {newState}");
-
-        // 상태별 처리
-        HandleStateChange(previousState, newState);
-
-        // 이벤트 발생
-        OnGameStateChanged?.Invoke(newState);
-
-        // UI 업데이트
-        if (uiManager != null)
+        if (stageManager != null)
         {
-            uiManager.OnGameStateChanged(newState);
-        }
-    }
-
-    void HandleStateChange(GameState from, GameState to)
-    {
-        switch (to)
-        {
-            case GameState.Playing:
-                Time.timeScale = 1f;
-                break;
-
-            case GameState.Success:
-                HandleGameSuccess();
-                break;
-
-            case GameState.Perfect:
-                HandleGamePerfect();
-                break;
-
-            case GameState.Failed:
-                HandleGameFailure();
-                break;
-
-            case GameState.Paused:
-                Time.timeScale = 0f;
-                break;
+            GameObject currentMineralBlock = stageManager.GetCurrentMineralBlock();
+            if (currentMineralBlock != null)
+            {
+                gemProtectionSystem = currentMineralBlock.GetComponent<GemProtectionSystem>();
+            }
         }
     }
 
     /// <summary>
-    /// ChunkCounter에서 오는 진행률 업데이트
+    /// MineralBlock의 ChunkCounter에서 호출되는 진행률 업데이트 (기존 로직 복원)
     /// </summary>
-    void OnChunkCountChanged(int activeChunks, int destroyedChunks, float progress)
+    public void OnMineralProgressChanged(int activeChunks, int destroyedChunks, float progress)
     {
-        // 게임이 진행 중이 아니면 무시
-        if (currentState != GameState.Playing) return;
-
-        UpdateProgress(progress);
-
-        // 승리 조건 체크
-        CheckWinConditions(progress, activeChunks);
-    }
-
-    void UpdateProgress(float newProgress)
-    {
-        currentProgress = newProgress;
-        OnProgressChanged?.Invoke(currentProgress);
-
-        Debug.Log($"채굴 진행률: {currentProgress * 100f:F1}%");
-    }
-
-    void CheckWinConditions(float progress, int activeChunks)
-    {
-        // 이미 성공/완료/실패 상태면 체크 안함
-        if (currentState == GameState.Success ||
-            currentState == GameState.Perfect ||
-            currentState == GameState.Failed)
+        // 게임이 시작되지 않았거나 초기화가 완료되지 않았으면 처리 안함
+        if (!gameStarted || !gameInitialized)
         {
+            Debug.Log($"게임 미시작 또는 초기화 미완료 - 진행률: {progress * 100f:F1}%");
             return;
         }
 
-        // 보석 파괴 체크는 CheckGemDestructionStatus에서 별도 처리
+        // 이미 성공했으면 중복 처리 방지
+        if (gameSucceeded || gameCompleted) return;
 
-        // 70% 성공 체크
-        if (allowPartialSuccess && progress >= successThreshold && progress < 1.0f)
+        currentProgress = progress;
+        OnProgressChanged?.Invoke(progress);
+
+        Debug.Log($"채굴 진행: {progress * 100f:F1}% ({activeChunks}개 남음)");
+
+        // === 70% 성공 체크 ===
+        if (!gameSucceeded && allowPartialSuccess &&
+            progress >= successThreshold && progress < 1.0f)
         {
-            ChangeGameState(GameState.Success);
+            OnMiningSuccess(progress);
         }
-        // 100% 완료 체크
-        else if (activeChunks <= 0 && progress >= 1.0f)
+        // === 100% 완료 체크 ===
+        else if (!gameCompleted && activeChunks <= 0 && progress >= 1.0f)
         {
-            ChangeGameState(GameState.Perfect);
+            OnMiningComplete(progress);
         }
     }
 
-    void HandleGameSuccess()
+    /// <summary>
+    /// 70% 성공 처리 (기존 로직 복원)
+    /// </summary>
+    void OnMiningSuccess(float progress)
     {
-        Debug.Log($"스테이지 {currentStage} - 70% 성공!");
+        gameSucceeded = true;
+        ChangeGameState(GameState.Success);
 
-        // 점수 계산
-        int stageScore = CalculateStageScore(false);
-        AddScore(stageScore);
+        Debug.Log($"채굴 성공! {progress * 100f:F1}% 달성 (목표: {successThreshold * 100f}%)");
 
-        // 성공 연출
-        if (gemRevealSystem != null)
-        {
-            gemRevealSystem.StartGemSuccessReveal(stageScore);
-        }
-
-        // 잠시 후 다음 단계 옵션 표시
-        StartCoroutine(ShowNextStageOptions(3f));
-    }
-
-    void HandleGamePerfect()
-    {
-        Debug.Log($"스테이지 {currentStage} - 완벽한 채굴!");
-
-        // 점수 계산 (보너스 포함)
-        int stageScore = CalculateStageScore(true);
-        AddScore(stageScore);
-
-        // 완벽 연출
-        if (gemRevealSystem != null)
-        {
-            gemRevealSystem.StartGemPerfectReveal(stageScore);
-        }
-
-        // 잠시 후 다음 단계 옵션 표시
-        StartCoroutine(ShowNextStageOptions(4f));
-    }
-
-    void HandleGameFailure()
-    {
-        Debug.Log($"스테이지 {currentStage} - 게임 실패 (보석 파괴)");
-
-        // 실패 연출
-        if (gemRevealSystem != null)
-        {
-            gemRevealSystem.StartGemDestruction();
-        }
-
-        // 재시작 옵션 표시
-        StartCoroutine(ShowRestartOptions(2f));
-    }
-
-    int CalculateStageScore(bool isPerfect)
-    {
-        int baseScore = 100;
-
-        // 보석 상태에 따른 점수
-        if (gemProtectionSystem != null)
-        {
-            var gems = gemProtectionSystem.GetAllGems();
-            int gemScore = 0;
-
-            foreach (var gem in gems)
-            {
-                gemScore += gemProtectionSystem.CalculateGemScore(gem);
-            }
-
-            baseScore = gemScore / gems.Length; // 평균 점수
-        }
-
-        // 완벽 완주시 보너스
-        if (isPerfect)
-        {
-            baseScore += 50;
-        }
-
-        // 스테이지별 배율 적용
-        return baseScore * currentStage;
-    }
-
-    void AddScore(int points)
-    {
-        currentScore += points;
+        // 성공시 보석 점수 계산
+        int finalGemScore = CalculateFinalGemScore();
+        currentScore = finalGemScore;
         OnScoreChanged?.Invoke(currentScore);
 
-        if (scoreSystem != null)
+        // UIManager에 성공 알림
+        if (uiManager != null)
         {
-            scoreSystem.AddScore(points);
+            uiManager.ShowNextStageUI();
         }
 
-        Debug.Log($"점수 획득: +{points} (총점: {currentScore})");
+        // 성공 연출 시작 (회전 + 보존)
+        if (gemRevealSystem != null)
+        {
+            gemRevealSystem.StartGemSuccessReveal(finalGemScore);
+        }
     }
 
-    IEnumerator ShowNextStageOptions(float delay)
+    /// <summary>
+    /// 100% 완료 처리 (기존 로직 복원)
+    /// </summary>  
+    void OnMiningComplete(float progress)
     {
-        yield return new WaitForSeconds(delay);
+        gameCompleted = true;
+        ChangeGameState(GameState.Perfect);
 
-        if (currentStage < totalStages)
+        Debug.Log($"채굴 완료! {progress * 100f:F1}% 달성 - 완벽한 완주!");
+
+        // 최종 보석 점수 계산 + 보너스
+        int finalGemScore = CalculateFinalGemScore() + 20; // 완벽 완주 보너스
+        currentScore = finalGemScore;
+        OnScoreChanged?.Invoke(currentScore);
+
+        // UIManager에 완료 알림
+        if (uiManager != null)
         {
-            // 다음 스테이지 진행 가능
-            if (uiManager != null)
-            {
-                uiManager.ShowNextStageUI();
-            }
+            uiManager.ShowGameCompleteUI(finalGemScore);
+        }
 
-            Debug.Log("N키: 다음 스테이지, R키: 현재 스테이지 재시작");
+        // 완벽 연출 시작 (특별 회전 + 보존)
+        if (gemRevealSystem != null)
+        {
+            gemRevealSystem.StartGemPerfectReveal(finalGemScore);
+        }
+    }
+
+    /// <summary>
+    /// 시간 초과 처리 (UIManager에서 호출)
+    /// </summary>
+    public void OnTimeUp()
+    {
+        if (currentState != GameState.Playing) return;
+
+        Debug.Log("시간 초과 발생!");
+
+        // 현재 진행률 확인
+        if (currentProgress >= successThreshold) // 70% 이상
+        {
+            Debug.Log("시간 초과지만 70% 이상 완료로 성공 처리");
+            OnMiningSuccess(currentProgress);
         }
         else
         {
-            // 모든 스테이지 완료
-            HandleGameComplete();
+            Debug.Log($"시간 초과로 실패 - 진행률: {currentProgress * 100f:F1}%");
+            ChangeGameState(GameState.Failed);
+
+            // 실패 시 최종 점수는 현재까지의 진행률 기반으로 계산
+            int timeoutScore = CalculateTimeoutScore();
+            currentScore = timeoutScore;
+            OnScoreChanged?.Invoke(currentScore);
         }
     }
 
-    IEnumerator ShowRestartOptions(float delay)
+    /// <summary>
+    /// 시간 초과 시 점수 계산 (진행률 기반)
+    /// </summary>
+    int CalculateTimeoutScore()
     {
-        yield return new WaitForSeconds(delay);
+        if (gemProtectionSystem == null) return 0;
 
-        if (uiManager != null)
+        // 기본 점수는 진행률에 비례
+        int baseScore = Mathf.RoundToInt(currentProgress * 50f); // 최대 50점
+
+        // 보석 상태도 고려
+        var gems = gemProtectionSystem.GetAllGems();
+        int gemBonus = 0;
+
+        foreach (var gem in gems)
         {
-            uiManager.ShowRestartUI();
+            if (!gem.isDestroyed)
+            {
+                gemBonus += Mathf.RoundToInt(gem.currentCondition * 0.2f); // 보석 상태에 따른 보너스
+            }
         }
 
-        Debug.Log("R키: 현재 스테이지 재시작, Q키: 게임 종료");
+        int totalScore = baseScore + gemBonus;
+        Debug.Log($"시간 초과 점수: 기본 {baseScore} + 보석 보너스 {gemBonus} = {totalScore}");
+
+        return totalScore;
     }
 
-    void HandleGameComplete()
+    /// <summary>
+    /// 최종 보석 점수 계산 (기존 로직 복원)
+    /// </summary>
+    int CalculateFinalGemScore()
     {
-        Debug.Log("모든 스테이지 완료! 게임 클리어!");
+        if (gemProtectionSystem == null) return 0;
 
-        if (uiManager != null)
+        int totalScore = 0;
+        int gemCount = 0;
+
+        // 모든 보석의 점수 합산
+        var allGems = gemProtectionSystem.GetAllGems();
+        foreach (var gem in allGems)
         {
-            uiManager.ShowGameCompleteUI(currentScore);
+            int gemScore = CalculateIndividualGemScore(gem);
+            totalScore += gemScore;
+            gemCount++;
+
+            Debug.Log($"보석 점수: {gemScore}점");
+        }
+
+        // 평균 점수 계산
+        int averageScore = gemCount > 0 ? totalScore / gemCount : 0;
+
+        Debug.Log($"최종 점수: {averageScore}점 (총 {gemCount}개 보석)");
+
+        return averageScore;
+    }
+
+    /// <summary>
+    /// 개별 보석 점수 계산 (안전한 방식)
+    /// </summary>
+    int CalculateIndividualGemScore(object gem)
+    {
+        try
+        {
+            // 리플렉션을 사용하여 보석 상태 확인
+            var gemType = gem.GetType();
+
+            var isDestroyedField = gemType.GetField("isDestroyed");
+            bool isDestroyed = isDestroyedField != null && (bool)isDestroyedField.GetValue(gem);
+
+            if (isDestroyed) return 0;
+
+            var conditionField = gemType.GetField("currentCondition");
+            float condition = conditionField != null ? (float)conditionField.GetValue(gem) : 100f;
+
+            // 상태에 따른 점수 계산
+            if (condition >= 90f) return 100; // 완벽한 보석
+            if (condition >= 70f) return 70;  // 약간 손상
+            if (condition >= 30f) return 30;  // 많이 손상
+            return 10; // 거의 파괴 직전
+        }
+        catch
+        {
+            return 50; // 오류 시 기본 점수
+        }
+    }
+
+    void ChangeGameState(GameState newState)
+    {
+        if (currentState != newState)
+        {
+            currentState = newState;
+            OnGameStateChanged?.Invoke(newState);
+            Debug.Log($"게임 상태 변경: {newState}");
         }
     }
 
@@ -396,7 +389,12 @@ public class GameManager : MonoBehaviour
         Debug.Log($"스테이지 {currentStage} 재시작");
 
         // 상태 초기화
+        gameStarted = false;
+        gameSucceeded = false;
+        gameCompleted = false;
+        gameInitialized = false;
         currentProgress = 0f;
+
         ChangeGameState(GameState.NotStarted);
 
         // 스테이지 재초기화
@@ -422,7 +420,7 @@ public class GameManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 보석 파괴 상태를 주기적으로 체크 (폴링 방식)
+    /// 보석 파괴 상태를 주기적으로 체크
     /// </summary>
     void CheckGemDestructionStatus()
     {
@@ -447,7 +445,7 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        if (Input.GetKeyDown(KeyCode.R))
+        if (Input.GetKeyDown(KeyCode.T))
         {
             RestartCurrentStage();
         }
@@ -465,31 +463,28 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        // 디버그 정보 출력
-        if (Input.GetKeyDown(KeyCode.F1))
+        // 강제 테스트 키들
+        if (Input.GetKeyDown(KeyCode.Alpha7)) // 7키: 70% 성공 강제 테스트
         {
-            PrintGameStatus();
+            if (gameInitialized && !gameSucceeded && !gameCompleted)
+            {
+                Debug.Log("70% 성공 강제 테스트 실행");
+                OnMiningSuccess(successThreshold);
+            }
         }
-    }
 
-    [ContextMenu("게임 상태 출력")]
-    public void PrintGameStatus()
-    {
-        Debug.Log("=== GameManager 상태 ===");
-        Debug.Log($"현재 상태: {currentState}");
-        Debug.Log($"현재 스테이지: {currentStage}/{totalStages}");
-        Debug.Log($"진행률: {currentProgress * 100f:F1}%");
-        Debug.Log($"현재 점수: {currentScore}");
-        Debug.Log($"성공 임계값: {successThreshold * 100f}%");
-        Debug.Log("========================");
+        if (Input.GetKeyDown(KeyCode.Alpha0)) // 0키: 100% 완료 강제 테스트
+        {
+            if (gameInitialized && !gameCompleted)
+            {
+                Debug.Log("100% 완료 강제 테스트 실행");
+                OnMiningComplete(1.0f);
+            }
+        }
     }
 
     void OnDestroy()
     {
-        // 이벤트 구독 해제
-        if (chunkCounter != null)
-        {
-            chunkCounter.OnChunkCountChanged -= OnChunkCountChanged;
-        }
+        // 이벤트 구독 해제는 MineralBlock에서 처리
     }
 }

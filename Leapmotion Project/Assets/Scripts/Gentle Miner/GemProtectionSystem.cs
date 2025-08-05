@@ -221,8 +221,12 @@ public class GemProtectionSystem : MonoBehaviour
     private void OnGemDestroyed(GemData gem)
     {
         // 게임이 시작되지 않았다면 연출하지 않음 (미리보기 중)
-        Test testScript = GetComponent<Test>();
-        if (testScript != null && !testScript.IsGameStarted) return;
+        // 수정 전: MineralBlock testScript = GetComponent<MineralBlock>();
+        // 수정 전: if (testScript != null && !testScript.IsGameStarted) return;
+
+        // 수정 후: GameManager를 참조하도록 변경
+        GameManager gameManager = FindFirstObjectByType<GameManager>();
+        if (gameManager != null && !gameManager.IsGameStarted) return;
 
         // 즉시 GemRevealSystem의 파괴 연출 호출
         if (gemRevealSystem != null)

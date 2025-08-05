@@ -1,34 +1,38 @@
+ï»¿using LibreFracture;
 using UnityEngine;
-using LibreFracture;
 
 /// <summary>
-/// ±¤¹° ºí·Ï ±¸Á¶ ¹× Ã¤±¼ ·ÎÁ÷ Ã³¸® (±âÈ¹¼­)
-/// °¢ ±¤¹° ºí·ÏÀÇ ¼Ó¼º°ú LibreFracture ½Ã½ºÅÛ ÅëÇÕ °ü¸®
+/// ê´‘ë¬¼ ë¸”ë¡ êµ¬ì¡° ë° ê¸°ë³¸ ì±„êµ´ ë¡œì§ ì²˜ë¦¬ (Test.cs ê°„ì†Œí™” ë²„ì „)
+/// ì£¼ìš” ê²Œì„ ë¡œì§ì€ GameManagerë¡œ ì´ë™ë¨
 /// </summary>
 public class MineralBlock : MonoBehaviour
 {
-    [Header("±¤¹° ºí·Ï Á¤º¸")]
-    public string mineralType = "´ÙÀÌ¾Æ¸óµå";
-    public float hardness = 1.0f; // ±¤¹° °æµµ (Ã¤±¼ ³­ÀÌµµ)
-    public Color mineralColor = Color.white;
+    [Header("ì±„êµ´ ì„¤ì •")]
+    public float miningRadius = 0.3f;
+    public float gentleForce = 5f;
+    public int chunksPerClick = 2;
+    public LayerMask chunkLayer = -1;
 
-    [Header("º¸¼® ¼³Á¤")]
-    public int gemCount = 3; // Æ÷ÇÔµÈ º¸¼® °³¼ö
-    public float gemQuality = 1.0f; // º¸¼® Ç°Áú ¹èÀ²
+    [Header("ì±„êµ´ íš¨ê³¼")]
+    public AudioClip miningSound;
+    public AudioClip[] chunkFallSounds;
 
-    [Header("LibreFracture ¼³Á¤")]
-    public float totalMass = 10f;
-    public float jointBreakForce = 50f;
+    [Header("ì±„êµ´ ê°•ë„")]
+    [Range(1f, 50f)]
+    public float miningForceIntensity = 20f;
 
-    // ½Ã½ºÅÛ ÂüÁ¶
+    [Header("ìŠ¤í…Œì´ì§€ë³„ ì„¤ì •")]
+    public float hardness = 1.0f;      // StageManagerì—ì„œ ì„¤ì •í•˜ëŠ” ê´‘ë¬¼ ê²½ë„
+    public float gemQuality = 1.0f;    // StageManagerì—ì„œ ì„¤ì •í•˜ëŠ” ë³´ì„ í’ˆì§ˆ
+
+    // ì‹œìŠ¤í…œ ì°¸ì¡°ë“¤
     private ChunkGraphManager chunkGraphManager;
+    private AudioSource audioSource;
+    private ChunkNode[] allChunks;
     private GemProtectionSystem gemProtectionSystem;
     private ChunkCounter chunkCounter;
-
-
-    // ºí·Ï »óÅÂ
-    private bool blockInitialized = false;
-    private int initialChunkCount = 0;
+    private GameManager gameManager;
+    private HandController handController;
 
     void Start()
     {
@@ -37,234 +41,324 @@ public class MineralBlock : MonoBehaviour
 
     void InitializeMineralBlock()
     {
-        Debug.Log($"=== MineralBlock ÃÊ±âÈ­: {mineralType} ===");
+        Debug.Log("=== MineralBlock ì´ˆê¸°í™” ì‹œì‘ ===");
 
-        // ½Ã½ºÅÛ ÄÄÆ÷³ÍÆ® ¼³Á¤
-        SetupChunkGraphManager();
-        SetupGemProtectionSystem();
-        SetupChunkCounter();
-        SetupGameManager();
+        FindSystemReferences();
+        SubscribeToEvents();
+        SetupInitialSettings();
 
-        // ±¤¹° ¼Ó¼º Àû¿ë
-        ApplyMineralProperties();
-
-        blockInitialized = true;
-
-        Debug.Log($"MineralBlock ÃÊ±âÈ­ ¿Ï·á: {mineralType} (°æµµ: {hardness})");
+        Debug.Log("=== MineralBlock ì´ˆê¸°í™” ì™„ë£Œ ===");
     }
 
-    /// <summary>
-    /// ChunkGraphManager ¼³Á¤
-    /// </summary>
-    void SetupChunkGraphManager()
+    void FindSystemReferences()
     {
+        // ë¡œì»¬ ì»´í¬ë„ŒíŠ¸ë“¤
         chunkGraphManager = GetComponent<ChunkGraphManager>();
-        if (chunkGraphManager == null)
-        {
-            chunkGraphManager = gameObject.AddComponent<ChunkGraphManager>();
-        }
-
-        // ±¤¹° °æµµ¿¡ µû¸¥ ¼³Á¤ Á¶Á¤
-        chunkGraphManager.totalMass = totalMass * hardness;
-        chunkGraphManager.jointBreakForce = jointBreakForce * hardness;
-
-        Debug.Log("ChunkGraphManager ¼³Á¤ ¿Ï·á");
-    }
-
-    /// <summary>
-    /// GemProtectionSystem ¼³Á¤
-    /// </summary>
-    void SetupGemProtectionSystem()
-    {
         gemProtectionSystem = GetComponent<GemProtectionSystem>();
-        if (gemProtectionSystem == null)
-        {
-            Debug.LogWarning("GemProtectionSystemÀÌ ¾ø½À´Ï´Ù!");
-            return;
-        }
-
-        // º¸¼® Ç°Áú¿¡ µû¸¥ º¸È£ ¼³Á¤ Á¶Á¤
-        var gems = gemProtectionSystem.GetAllGems();
-        foreach (var gem in gems)
-        {
-            gem.damageThreshold = gem.damageThreshold * gemQuality;
-            gem.protectionRadius = gem.protectionRadius * gemQuality;
-        }
-
-        Debug.Log("GemProtectionSystem ¼³Á¤ ¿Ï·á");
-    }
-
-    /// <summary>
-    /// ChunkCounter ¼³Á¤
-    /// </summary>
-    void SetupChunkCounter()
-    {
         chunkCounter = GetComponent<ChunkCounter>();
+
         if (chunkCounter == null)
         {
             chunkCounter = gameObject.AddComponent<ChunkCounter>();
         }
 
-        // ÃÊ±â Á¶°¢ ¼ö ÀúÀå
-        initialChunkCount = chunkCounter.TotalChunksAtStart;
-
-        Debug.Log($"ChunkCounter ¼³Á¤ ¿Ï·á: {initialChunkCount}°³ Á¶°¢");
-    }
-
-    /// <summary>
-    /// GameManager ¿¬µ¿
-    /// </summary>
-    void SetupGameManager()
-    {
-
-        Debug.Log("GameManager ¿¬µ¿ ¿Ï·á");
-    }
-
-    /// <summary>
-    /// ±¤¹° ¼Ó¼º¿¡ µû¸¥ ¼³Á¤ Àû¿ë
-    /// </summary>
-    void ApplyMineralProperties()
-    {
-        // ±¤¹° Á¾·ùº° Æ¯¼º Àû¿ë
-        switch (mineralType.ToLower())
+        audioSource = GetComponent<AudioSource>();
+        if (audioSource == null)
         {
-            case "´ÙÀÌ¾Æ¸óµå":
-                hardness = 1.0f;
-                mineralColor = Color.white;
-                gemQuality = 1.2f;
-                break;
-
-            case "¿¡¸Ş¶öµå":
-                hardness = 1.3f;
-                mineralColor = Color.green;
-                gemQuality = 1.1f;
-                break;
-
-            case "·çºñ":
-                hardness = 1.5f;
-                mineralColor = Color.red;
-                gemQuality = 1.0f;
-                break;
-
-            case "»çÆÄÀÌ¾î":
-                hardness = 1.7f;
-                mineralColor = Color.blue;
-                gemQuality = 0.9f;
-                break;
+            audioSource = gameObject.AddComponent<AudioSource>();
         }
 
-        // ½Ã°¢Àû »ö»ó Àû¿ë
-        ApplyVisualColor();
+        // ì „ì—­ ë§¤ë‹ˆì €ë“¤
+        gameManager = FindFirstObjectByType<GameManager>();
+        handController = FindFirstObjectByType<HandController>();
 
-        Debug.Log($"±¤¹° ¼Ó¼º Àû¿ë: {mineralType} (°æµµ: {hardness}, Ç°Áú: {gemQuality})");
+        if (gameManager == null)
+        {
+            Debug.LogError("GameManagerë¥¼ ì°¾ì„ ìˆ˜ ì—†ìŠµë‹ˆë‹¤!");
+        }
+
+        if (handController == null)
+        {
+            Debug.LogError("HandControllerë¥¼ ì°¾ì„ ìˆ˜ ì—†ìŠµë‹ˆë‹¤!");
+        }
+    }
+
+    void SubscribeToEvents()
+    {
+        // ChunkCounter ì´ë²¤íŠ¸ë¥¼ GameManagerë¡œ ì „ë‹¬
+        if (chunkCounter != null && gameManager != null)
+        {
+            chunkCounter.OnChunkCountChanged += gameManager.OnMineralProgressChanged;
+        }
+
+        // HandController ë§ì¹˜ íƒ€ê²© ì´ë²¤íŠ¸ êµ¬ë…
+        if (handController != null)
+        {
+            handController.OnHammerStrike += OnHammerStrike;
+        }
+    }
+
+    void SetupInitialSettings()
+    {
+        // ëª¨ë“  ì¡°ê°ë“¤ ìºì‹œ
+        RefreshChunkCache();
+
+        // ìŠ¤í…Œì´ì§€ë³„ ì„¤ì • ì ìš©
+        ApplyStageSettings();
     }
 
     /// <summary>
-    /// ±¤¹° »ö»ó ½Ã°¢Àû Àû¿ë
+    /// ìŠ¤í…Œì´ì§€ë³„ ì„¤ì •ì„ ì‹¤ì œ ì‹œìŠ¤í…œì— ì ìš© (StageManagerì—ì„œ í˜¸ì¶œ ê°€ëŠ¥)
     /// </summary>
-    void ApplyVisualColor()
+    public void ApplyStageSettings()
     {
-        Renderer renderer = GetComponent<Renderer>();
-        if (renderer != null)
+        // ì±„êµ´ ê°•ë„ë¥¼ ê²½ë„ì— ë”°ë¼ ì¡°ì •
+        miningForceIntensity = miningForceIntensity * hardness;
+
+        // ì¡°ê° ì—°ê²° ê°•ë„ë¥¼ ê²½ë„ì— ë”°ë¼ ì¡°ì •
+        if (chunkGraphManager != null)
         {
-            renderer.material.color = mineralColor;
+            chunkGraphManager.jointBreakForce = chunkGraphManager.jointBreakForce * hardness;
         }
 
-        // ÀÚ½Ä Á¶°¢µé¿¡µµ »ö»ó Àû¿ë
-        ChunkNode[] chunks = GetComponentsInChildren<ChunkNode>();
-        foreach (ChunkNode chunk in chunks)
+        Debug.Log($"ìŠ¤í…Œì´ì§€ ì„¤ì • ì ìš© - ê²½ë„: {hardness}, í’ˆì§ˆ: {gemQuality}");
+    }
+
+    void RefreshChunkCache()
+    {
+        var validChunks = new System.Collections.Generic.List<ChunkNode>();
+
+        ChunkNode[] foundChunks = GetComponentsInChildren<ChunkNode>();
+        foreach (ChunkNode chunk in foundChunks)
         {
-            Renderer chunkRenderer = chunk.GetComponent<Renderer>();
-            if (chunkRenderer != null)
+            if (chunk != null && chunk.gameObject != null)
             {
-                chunkRenderer.material.color = mineralColor;
+                validChunks.Add(chunk);
+            }
+        }
+
+        allChunks = validChunks.ToArray();
+    }
+
+    void Update()
+    {
+        // ê²Œì„ì´ ì‹œì‘ë˜ì§€ ì•Šì•˜ìœ¼ë©´ ì…ë ¥ ë¬´ì‹œ
+        if (gameManager == null || !gameManager.IsGameStarted) return;
+
+        // ë§ˆìš°ìŠ¤ í´ë¦­ ì²˜ë¦¬
+        if (Input.GetMouseButtonDown(0))
+        {
+            HandleMouseClick();
+        }
+    }
+
+    void HandleMouseClick()
+    {
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        RaycastHit hit;
+
+        if (Physics.Raycast(ray, out hit, Mathf.Infinity, chunkLayer))
+        {
+            // í´ë¦­ëœ ì¡°ê°ì´ ì´ ì˜¤ë¸Œì íŠ¸ì˜ ì¼ë¶€ì¸ì§€ í™•ì¸
+            if (hit.collider.transform.IsChildOf(transform))
+            {
+                MineAtPoint(hit.point, hit.normal);
             }
         }
     }
 
     /// <summary>
-    /// ±¤¹° ºí·Ï ¸®¼Â
+    /// HandControllerì—ì„œ ë°œìƒí•˜ëŠ” ë§ì¹˜ íƒ€ê²© ì´ë²¤íŠ¸ ì²˜ë¦¬
     /// </summary>
-    public void ResetMineralBlock()
+    public void OnHammerStrike(Vector3 position, Vector3 direction, float force)
     {
-        Debug.Log($"{mineralType} ºí·Ï ¸®¼Â");
+        Debug.Log($"ë§ì¹˜ íƒ€ê²© ê°ì§€! ìœ„ì¹˜: {position}, í˜: {force:F2}");
 
-        // °¢ ½Ã½ºÅÛ ¸®¼Â
-        if (chunkCounter != null)
+        // ê²Œì„ì´ ì‹œì‘ë˜ì§€ ì•Šì•˜ìœ¼ë©´ ë¬´ì‹œ
+        if (gameManager == null || !gameManager.IsGameStarted)
         {
-            // ChunkCounter ¸®¼Â ¸Ş¼­µå È£Ãâ
-            var resetMethod = chunkCounter.GetType().GetMethod("ResetCounter");
-            if (resetMethod != null)
-            {
-                resetMethod.Invoke(chunkCounter, null);
-            }
+            Debug.Log("ê²Œì„ì´ ì•„ì§ ì‹œì‘ë˜ì§€ ì•Šì•˜ìŠµë‹ˆë‹¤.");
+            return;
         }
 
+        // ì±„êµ´ ì‹¤í–‰
+        Vector3 surfaceNormal = -direction;
+        MineAtPoint(position, surfaceNormal);
+    }
+
+    /// <summary>
+    /// ì§€ì •ëœ ìœ„ì¹˜ì—ì„œ ì±„êµ´ ì‹¤í–‰
+    /// </summary>
+    public void MineAtPoint(Vector3 miningPoint, Vector3 surfaceNormal)
+    {
+        // 1. ì±„êµ´ ì „ì— ë³´ì„ ë³´í˜¸ ì‹œìŠ¤í…œì— ì¶©ê²© ì „ë‹¬
         if (gemProtectionSystem != null)
         {
-            // º¸¼® »óÅÂ ¸®¼Â
-            var gems = gemProtectionSystem.GetAllGems();
-            foreach (var gem in gems)
-            {
-                gem.currentCondition = 100f;
-                gem.receivedHits = 0;
-                gem.isProtected = true;
-                gem.isDestroyed = false;
-            }
+            // ê²½ë„ì— ë”°ë¼ ì¶©ê²© ê°•ë„ ì¡°ì •
+            float adjustedForce = miningForceIntensity * hardness;
+            gemProtectionSystem.CheckMiningImpactOnGems(miningPoint, adjustedForce);
         }
 
-        Debug.Log($"{mineralType} ºí·Ï ¸®¼Â ¿Ï·á");
+        // 2. ì±„êµ´ íš¨ê³¼ ìƒì„±
+        CreateMiningEffect(miningPoint, surfaceNormal);
+
+        // 3. ì±„êµ´ ì‚¬ìš´ë“œ ì¬ìƒ
+        if (miningSound != null && audioSource != null)
+        {
+            audioSource.PlayOneShot(miningSound);
+        }
+
+        // 4. í™œì„±í™”ë˜ê³  ì•ˆì „í•œ ì¡°ê°ë“¤ë§Œ ì°¾ê¸°
+        var activeChunks = System.Array.FindAll(allChunks, chunk =>
+            chunk != null &&
+            chunk.gameObject != null &&
+            chunk.gameObject.activeInHierarchy
+        );
+
+        if (activeChunks.Length == 0)
+        {
+            Debug.Log("ë” ì´ìƒ ì±„êµ´í•  ì¡°ê°ì´ ì—†ìŠµë‹ˆë‹¤. (ìºì‹œ ê°±ì‹  ì‹œë„ ì¤‘...)");
+            RefreshChunkCache();
+            return;
+        }
+
+        // 5. ì±„êµ´ ì§€ì ì— ê°€ê¹Œìš´ ì¡°ê°ë“¤ì„ ê±°ë¦¬ìˆœìœ¼ë¡œ ì •ë ¬
+        System.Array.Sort(activeChunks, (a, b) =>
+        {
+            float distA = Vector3.Distance(a.transform.position, miningPoint);
+            float distB = Vector3.Distance(b.transform.position, miningPoint);
+            return distA.CompareTo(distB);
+        });
+
+        int chunksRemoved = 0;
+
+        // 6. ê°€ê¹Œìš´ ì¡°ê°ë¶€í„° ì°¨ë¡€ë¡œ ì œê±°
+        foreach (ChunkNode chunk in activeChunks)
+        {
+            if (chunksRemoved >= chunksPerClick) break;
+
+            float distance = Vector3.Distance(chunk.transform.position, miningPoint);
+
+            // ì±„êµ´ ë²”ìœ„ ë‚´ì— ìˆëŠ” ì¡°ê°ë“¤ë§Œ ì²˜ë¦¬
+            if (distance <= miningRadius)
+            {
+                RemoveChunkGently(chunk, miningPoint, surfaceNormal);
+                chunksRemoved++;
+            }
+        }
     }
 
-    /// <summary>
-    /// ºí·Ï »óÅÂ Á¤º¸ ¹İÈ¯
-    /// </summary>
-    public (string type, float hardness, int chunks, float progress) GetBlockStatus()
+    void RemoveChunkGently(ChunkNode chunk, Vector3 miningPoint, Vector3 surfaceNormal)
     {
-        float progress = chunkCounter?.MiningProgress ?? 0f;
-        int currentChunks = chunkCounter?.CurrentActiveChunks ?? 0;
+        if (chunk == null || chunk.gameObject == null) return;
 
-        return (mineralType, hardness, currentChunks, progress);
+        // ê°„ë‹¨í•˜ê²Œ ì—°ê²°ë§Œ ëŠê¸°
+        BreakChunkConnections(chunk);
+
+        // ë¶€ë“œëŸ¬ìš´ ë¬¼ë¦¬ í˜ ì ìš© (ê²½ë„ì— ë”°ë¼ ì¡°ì •)
+        ApplyGentleForce(chunk, surfaceNormal);
+
+        // ì¡°ê° ë–¨ì–´ì§€ëŠ” ì†Œë¦¬
+        if (chunkFallSounds != null && chunkFallSounds.Length > 0)
+        {
+            StartCoroutine(PlayDelayedFallSound(Random.Range(0.2f, 0.8f)));
+        }
     }
 
-    /// <summary>
-    /// Ã¤±¼ °¡´É ¿©ºÎ È®ÀÎ
-    /// </summary>
-    public bool CanMine()
+    void BreakChunkConnections(ChunkNode chunk)
     {
-        if (!blockInitialized) return false;
+        if (chunk == null) return;
 
-        return chunkCounter?.CurrentActiveChunks > 0;
+        // ëª¨ë“  Joint ì œê±°
+        Joint[] joints = chunk.GetComponents<Joint>();
+        foreach (Joint joint in joints)
+        {
+            if (joint != null)
+                Destroy(joint);
+        }
+
+        FixedJoint[] fixedJoints = chunk.GetComponents<FixedJoint>();
+        foreach (FixedJoint fixedJoint in fixedJoints)
+        {
+            if (fixedJoint != null)
+                Destroy(fixedJoint);
+        }
     }
 
-    /// <summary>
-    /// ±¤¹° Á¾·ù º¯°æ (½ºÅ×ÀÌÁö ÀüÈ¯¿ë)
-    /// </summary>
-    public void ChangeMineralType(string newType)
+    void ApplyGentleForce(ChunkNode chunk, Vector3 surfaceNormal)
     {
-        mineralType = newType;
-        ApplyMineralProperties();
+        Rigidbody rb = chunk.GetComponent<Rigidbody>();
+        if (rb == null) return;
 
-        Debug.Log($"±¤¹° Á¾·ù º¯°æ: {newType}");
+        Vector3 forceDirection = (chunk.transform.position - transform.position).normalized;
+        forceDirection.y = Mathf.Max(forceDirection.y, 0.1f);
+
+        // ê²½ë„ì— ë”°ë¼ í˜ ì¡°ì •
+        float adjustedForce = gentleForce * hardness;
+        rb.AddForce(forceDirection * adjustedForce, ForceMode.Impulse);
+        rb.AddTorque(Random.insideUnitSphere * adjustedForce * 0.2f, ForceMode.Impulse);
     }
 
-    [ContextMenu("ºí·Ï »óÅÂ Ãâ·Â")]
-    public void PrintBlockStatus()
+    void CreateMiningEffect(Vector3 position, Vector3 normal)
     {
-        var status = GetBlockStatus();
+        // ëŒê°€ë£¨ íš¨ê³¼
+        for (int i = 0; i < 3; i++)
+        {
+            GameObject dust = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            dust.transform.position = position + Random.insideUnitSphere * 0.1f;
+            dust.transform.localScale = Vector3.one * Random.Range(0.02f, 0.05f);
 
-        Debug.Log("=== MineralBlock »óÅÂ ===");
-        Debug.Log($"Á¾·ù: {status.type}");
-        Debug.Log($"°æµµ: {status.hardness}");
-        Debug.Log($"³²Àº Á¶°¢: {status.chunks}");
-        Debug.Log($"Ã¤±¼ ÁøÇà: {status.progress * 100f:F1}%");
-        Debug.Log($"Ã¤±¼ °¡´É: {CanMine()}");
-        Debug.Log("========================");
+            Renderer dustRenderer = dust.GetComponent<Renderer>();
+            dustRenderer.material.color = new Color(0.7f, 0.6f, 0.4f);
+
+            Rigidbody dustRb = dust.AddComponent<Rigidbody>();
+            Vector3 force = normal * Random.Range(1f, 3f) + Random.insideUnitSphere * 0.5f;
+            dustRb.AddForce(force, ForceMode.Impulse);
+
+            Destroy(dust, 1.5f);
+        }
+
+        // ëŒì¡°ê° íš¨ê³¼
+        for (int i = 0; i < 2; i++)
+        {
+            GameObject chip = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            chip.transform.position = position + Random.insideUnitSphere * 0.05f;
+            chip.transform.localScale = Vector3.one * Random.Range(0.03f, 0.07f);
+            chip.transform.rotation = Random.rotation;
+
+            Renderer chipRenderer = chip.GetComponent<Renderer>();
+            chipRenderer.material.color = new Color(0.5f, 0.4f, 0.3f);
+
+            Rigidbody chipRb = chip.AddComponent<Rigidbody>();
+            Vector3 chipForce = normal * Random.Range(2f, 5f) + Random.insideUnitSphere * 1f;
+            chipRb.AddForce(chipForce, ForceMode.Impulse);
+
+            Destroy(chip, 2f);
+        }
     }
 
-    [ContextMenu("ºí·Ï ¸®¼Â")]
-    public void ResetBlock()
+    System.Collections.IEnumerator PlayDelayedFallSound(float delay)
     {
-        ResetMineralBlock();
+        yield return new WaitForSeconds(delay);
+
+        if (chunkFallSounds != null && chunkFallSounds.Length > 0 && audioSource != null)
+        {
+            AudioClip fallSound = chunkFallSounds[Random.Range(0, chunkFallSounds.Length)];
+            audioSource.PlayOneShot(fallSound, 0.5f);
+        }
+    }
+
+    void OnDestroy()
+    {
+        // ì´ë²¤íŠ¸ êµ¬ë… í•´ì œ
+        if (chunkCounter != null && gameManager != null)
+        {
+            chunkCounter.OnChunkCountChanged -= gameManager.OnMineralProgressChanged;
+        }
+
+        if (handController != null)
+        {
+            handController.OnHammerStrike -= OnHammerStrike;
+        }
     }
 }

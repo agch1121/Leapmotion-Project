@@ -15,6 +15,11 @@ public class ChunkCounter : MonoBehaviour
     [SerializeField] private int currentRemovedChunks = 0;
     [SerializeField] private float miningProgress = 0f;
 
+    [Header("목표 설정")]
+    [Range(10, 500)]
+    public int targetChunkCount = 100;  // 100% 달성을 위한 목표 청크 수
+    public bool useCustomTarget = true; // 커스텀 목표 사용 여부
+
     [Header("디버그")]
     public bool enableDebugLogs = true;
     public bool enableProgressDebug = true;
@@ -153,7 +158,7 @@ public class ChunkCounter : MonoBehaviour
         // Progress 계산
         if (totalChunksAtStart > 0)
         {
-            miningProgress = (float)currentRemovedChunks / totalChunksAtStart;
+            miningProgress = (float)currentRemovedChunks / targetChunkCount;
         }
         else
         {

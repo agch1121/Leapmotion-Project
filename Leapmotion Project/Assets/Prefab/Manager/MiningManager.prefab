@@ -1,0 +1,191 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &912116649066935240
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2348314452452701064}
+  - component: {fileID: 4095692135280079469}
+  - component: {fileID: 551674995056088499}
+  - component: {fileID: 2414605277370044787}
+  - component: {fileID: 6843484423723586482}
+  - component: {fileID: 537024012670487210}
+  - component: {fileID: 2230210849708517276}
+  m_Layer: 0
+  m_Name: MiningManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2348314452452701064
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 912116649066935240}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.6605598, y: 1.5876956, z: -0.81959903}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4095692135280079469
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 912116649066935240}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6273f7d14857071429e5869b2b0ed51a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  useLeapMotion: 0
+  enableTestMode: 1
+  leftHandUpKey: 119
+  leftHandDownKey: 115
+  leftHandLeftKey: 97
+  leftHandRightKey: 100
+  hammerStrikeKey: 32
+  leftHandVisual: {fileID: 0}
+  rightHandVisual: {fileID: 0}
+  handMoveSpeed: 2
+  strikeDetectionThreshold: 0.7
+  maxStrikeDistance: 0.5
+--- !u!114 &551674995056088499
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 912116649066935240}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eec216cf8d476ad4fa7e89f8ed60ad43, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  gripStrengthWeight: 0.6
+  velocityWeight: 0.4
+  maxVelocityThreshold: 3
+  minVelocityThreshold: 0.1
+  weakForceThreshold: 0.55
+  strongForceThreshold: 0.85
+  forceMultiplierForGems: 30
+  enableDebugLogs: 1
+  showForceVisualization: 1
+--- !u!114 &2414605277370044787
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 912116649066935240}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b6d4ad4dfc24b145835e905ff9356cb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  chiselPrefab: {fileID: 0}
+  hammerPrefab: {fileID: 0}
+  chiselGuideLine: {fileID: 0}
+  chunkLayer:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  miningRadius: 0.1
+  chunksPerStrike: 2
+  chiselRayDistance: 2
+  showChiselPreview: 1
+  previewSphere: {fileID: 0}
+  safePreviewMaterial: {fileID: 0}
+  dangerPreviewMaterial: {fileID: 0}
+  miningSound: {fileID: 0}
+  chunkFallSounds: []
+  miningParticleEffect: {fileID: 0}
+  enableSafetySystem: 1
+  maxSafeDistance: 3
+--- !u!114 &6843484423723586482
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 912116649066935240}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 42bc534987febdb44aa469fbd5dd946c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  totalStages: 3
+  successThreshold: 0.7
+  allowPartialSuccess: 1
+  showGemPreviewOnStart: 1
+  gameStartDelay: 2
+  currentState: 0
+  currentStage: 1
+  currentProgress: 0
+  currentScore: 0
+--- !u!114 &537024012670487210
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 912116649066935240}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d37bf346066372c4aa5075e2ff4c7b52, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  gameplayPanel: {fileID: 0}
+  resultPanel: {fileID: 0}
+  stageText: {fileID: 0}
+  progressText: {fileID: 0}
+  scoreText: {fileID: 0}
+  progressSlider: {fileID: 0}
+  forceSlider: {fileID: 0}
+  forceText: {fileID: 0}
+  forceBackground: {fileID: 0}
+  safeForceColor: {r: 0, g: 1, b: 0, a: 1}
+  mediumForceColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  dangerForceColor: {r: 1, g: 0, b: 0, a: 1}
+  gemStatusParent: {fileID: 0}
+  gemStatusPrefab: {fileID: 0}
+  resultTitleText: {fileID: 0}
+  resultMessageText: {fileID: 0}
+  quitButton: {fileID: 0}
+  retryButton: {fileID: 0}
+  nextButton: {fileID: 0}
+--- !u!114 &2230210849708517276
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 912116649066935240}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 507f4c4cb0c43ad45b3a7baf7001b21f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  mainCamera: {fileID: 0}
+  gemRevealPosition: {fileID: 0}
+  originalCameraPosition: {fileID: 0}
+  gemPrefabs:
+  - {fileID: 0}
+  actualGem: {fileID: 0}
+  gemSpawnPoint: {fileID: 0}
+  cameraTransitionTime: 2
+  gemDisplayTime: 2
+  gemBreakDelay: 2
+  revealEffect: {fileID: 0}
+  gemRevealSound: {fileID: 0}
+  gemBreakSound: {fileID: 0}

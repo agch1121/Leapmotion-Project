@@ -1,5 +1,5 @@
 using UnityEngine;
-using Leap; // 립모션 SDK (나중에 설치)
+using Leap;
 
 /// <summary>
 /// 립모션 기반 양손 추적 시스템
@@ -27,7 +27,7 @@ public class HandController : MonoBehaviour
     public float strikeDetectionThreshold = 0.7f; // 타격 감지 임계값
     public float maxStrikeDistance = 0.5f; // 최대 타격 거리
 
-    // 립모션 컨트롤러 (나중에 SDK 설치시 활성화)
+    // 립모션 컨트롤러
     private Controller leapController;
 
     // 손 상태 데이터
