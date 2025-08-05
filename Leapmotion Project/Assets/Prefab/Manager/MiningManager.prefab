@@ -15,6 +15,8 @@ GameObject:
   - component: {fileID: 6843484423723586482}
   - component: {fileID: 537024012670487210}
   - component: {fileID: 2230210849708517276}
+  - component: {fileID: 3910604352585490043}
+  - component: {fileID: 3774529880877859323}
   m_Layer: 0
   m_Name: MiningManager
   m_TagString: Untagged
@@ -94,8 +96,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5b6d4ad4dfc24b145835e905ff9356cb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  chiselPrefab: {fileID: 0}
-  hammerPrefab: {fileID: 0}
+  chiselPrefab: {fileID: 343821429202371937, guid: 6ad9800c4bd363d4d9befe38c609214e, type: 3}
+  hammerPrefab: {fileID: 8066046616677774920, guid: 90a93640bf238654ea8350eecd6aa790, type: 3}
   chiselGuideLine: {fileID: 0}
   chunkLayer:
     serializedVersion: 2
@@ -147,18 +149,23 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   gameplayPanel: {fileID: 0}
   resultPanel: {fileID: 0}
-  stageText: {fileID: 0}
-  progressText: {fileID: 0}
-  scoreText: {fileID: 0}
+  timeTitle: {fileID: 0}
+  timeText: {fileID: 0}
   progressSlider: {fileID: 0}
+  progressTitle: {fileID: 0}
+  score: {fileID: 0}
   forceSlider: {fileID: 0}
-  forceText: {fileID: 0}
-  forceBackground: {fileID: 0}
+  safeImage: {fileID: 0}
+  warningImage: {fileID: 0}
+  successPointImage: {fileID: 0}
+  gameDuration: 180
   safeForceColor: {r: 0, g: 1, b: 0, a: 1}
   mediumForceColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   dangerForceColor: {r: 1, g: 0, b: 0, a: 1}
-  gemStatusParent: {fileID: 0}
-  gemStatusPrefab: {fileID: 0}
+  defaultTimeLimit: 180
+  normalTimeColor: {r: 1, g: 1, b: 1, a: 1}
+  warningTimeColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  dangerTimeColor: {r: 1, g: 0, b: 0, a: 1}
   resultTitleText: {fileID: 0}
   resultMessageText: {fileID: 0}
   quitButton: {fileID: 0}
@@ -189,3 +196,85 @@ MonoBehaviour:
   revealEffect: {fileID: 0}
   gemRevealSound: {fileID: 0}
   gemBreakSound: {fileID: 0}
+--- !u!114 &3910604352585490043
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 912116649066935240}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: df8d12d1af6f64d4eab76cd821f8648f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  stageConfigs:
+  - stageName: "\uB2E4\uC774\uC544\uBAAC\uB4DC \uAD11\uC0B0"
+    description: "\uCCAB \uBC88\uC9F8 \uCC44\uAD74 \uB3C4\uC804"
+    mineralBlockPrefab: {fileID: 5148724340144632534, guid: 53ffc6cc994a0bd4c8f1b7029cf95752, type: 3}
+    mineralHardness: 1
+    gemPrefabs:
+    - {fileID: 2909557631237781958, guid: affdc15c28cb8bd4dbe2e7f404e10985, type: 3}
+    gemCount: 1
+    gemQuality: 1
+    gemProtectionRadius: 0.4
+    damageThreshold: 15
+    freeHitCount: 1
+    jointBreakForce: 50
+  - stageName: "\uB2E4\uC774\uC544\uBAAC\uB4DC \uAD11\uC0B0"
+    description: "\uCCAB \uBC88\uC9F8 \uCC44\uAD74 \uB3C4\uC804"
+    mineralBlockPrefab: {fileID: 0}
+    mineralHardness: 1
+    gemPrefabs: []
+    gemCount: 3
+    gemQuality: 1
+    gemProtectionRadius: 0.4
+    damageThreshold: 15
+    freeHitCount: 1
+    jointBreakForce: 50
+  - stageName: "\uB2E4\uC774\uC544\uBAAC\uB4DC \uAD11\uC0B0"
+    description: "\uCCAB \uBC88\uC9F8 \uCC44\uAD74 \uB3C4\uC804"
+    mineralBlockPrefab: {fileID: 0}
+    mineralHardness: 1
+    gemPrefabs: []
+    gemCount: 3
+    gemQuality: 1
+    gemProtectionRadius: 0.4
+    damageThreshold: 15
+    freeHitCount: 1
+    jointBreakForce: 50
+  mineralSpawnPoint: {fileID: 0}
+  gemSpawnPoints: []
+  currentStageIndex: 0
+  currentMineralBlock: {fileID: 0}
+  currentGems: []
+--- !u!114 &3774529880877859323
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 912116649066935240}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c0b6dfe0c9e40db49bc88c69f4c89315, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  scoreConfig:
+    perfectGemScore: 100
+    damagedGemScore: 70
+    heavyDamagedScore: 30
+    destroyedGemScore: 0
+    perfectStageBonus: 50
+    speedBonusMax: 25
+    stageMultiplier: 1
+    gemDestructionPenalty: -50
+  currentScore: 0
+  stageScore: 0
+  totalScore: 0
+  highScore: 0
+  totalGemsFound: 0
+  perfectGems: 0
+  damagedGems: 0
+  destroyedGems: 0
+  totalPlayTime: 0
