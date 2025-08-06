@@ -200,6 +200,9 @@ public class StageManager : MonoBehaviour
         }
 
         Debug.Log($"광물 블록 생성: 경도 {config.mineralHardness}");
+
+        // MineralBlock을 ButtonManager에 설정(회전 기능 부여를 위함)
+        ButtonManager.Instance.SetMineral(currentMineralBlock);
     }
 
     void SetupGems(StageConfig config)

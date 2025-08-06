@@ -25,7 +25,7 @@ public class GameManager : MonoBehaviour
         Success,        // 70% 성공
         Perfect,        // 100% 완료
         Failed,         // 실패 (보석 파괴)
-        Paused
+        Paused          // 일시정지 (일단 보류)
     }
 
     [Header("현재 상태")]
@@ -70,7 +70,7 @@ public class GameManager : MonoBehaviour
         Debug.Log("=== GameManager 초기화 시작 ===");
 
         FindSystemReferences();
-        SubscribeToEvents();
+        SubscribeToEvents();    // 추후 사용하거나 삭제할 메소드
         StartCoroutine(StartGameSequence());
     }
 

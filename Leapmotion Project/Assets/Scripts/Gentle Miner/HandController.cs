@@ -2,13 +2,22 @@ using UnityEngine;
 using Leap;
 
 /// <summary>
-/// 립모션 기반 양손 추적 시스템 - 데이터 처리 개선 버전
+/// 립모션 기반 양손 추적 시스템 - 강화된 망치 타격 감지
 /// 왼손: 끌 고정, 오른손: 망치 고정
 /// </summary>
 public class HandController : MonoBehaviour
 {
     [Header("립모션 설정")]
     public bool useLeapMotion = true;
+
+    [Header("커스텀 쥐는 강도 시스템")]
+    public bool useCustomGrabStrength = true;
+    private GripCalculator gripCalculator;
+
+    [Header("타격 동작 검증")]
+    public float maxVelocityForStrike = 2.0f; // 타격 속도 계산용 최대값
+    public float minDownwardVelocity = 0.2f; // 최소 아래쪽 속도
+    public float minTotalVelocity = 0.3f; // 최소 전체 속도
 
     [Header("테스트 모드")]
     public bool enableTestMode = true;
@@ -19,20 +28,20 @@ public class HandController : MonoBehaviour
     public KeyCode hammerStrikeKey = KeyCode.Space;
 
     [Header("립모션 좌표 변환")]
-    public bool useRawCoordinates = true; // 원본 좌표 사용 여부
-    public float coordinateScale = 1f; // 좌표 스케일 (1 = 원본 크기)
-    public bool invertZ = false; // Z축 반전 옵션
+    public bool useRawCoordinates = true;
+    public float coordinateScale = 1f;
+    public bool invertZ = false;
 
     [Header("손 시각화")]
     public Transform leftHandVisual;
     public Transform rightHandVisual;
     public float handMoveSpeed = 2f;
-    public float smoothSpeed = 10f; // 부드러운 움직임을 위한 보간 속도
+    public float smoothSpeed = 10f;
 
     [Header("채굴 설정")]
     public float strikeDetectionThreshold = 0.5f;
     public float maxStrikeDistance = 2.0f;
-    public float velocityThreshold = 0.1f; // 더 낮춘 속도 임계값
+    public float velocityThreshold = 0.1f;
 
     // 립모션 컨트롤러
     private Controller leapController;
@@ -75,6 +84,8 @@ public class HandController : MonoBehaviour
     {
         Debug.Log("=== HandController 초기화 시작 ===");
 
+        InitializeGripCalculator();
+
         // 립모션 초기화
         if (useLeapMotion)
         {
@@ -82,7 +93,6 @@ public class HandController : MonoBehaviour
             {
                 leapController = new Controller();
 
-                // 립모션 설정 확인
                 if (leapController.IsConnected)
                 {
                     Debug.Log("립모션 디바이스 연결됨!");
@@ -113,6 +123,25 @@ public class HandController : MonoBehaviour
         targetRightRot = Quaternion.identity;
 
         UpdateHandVisuals();
+    }
+
+    void InitializeGripCalculator()
+    {
+        if (useCustomGrabStrength)
+        {
+            gripCalculator = GetComponent<GripCalculator>();
+            if (gripCalculator == null)
+            {
+                gripCalculator = gameObject.AddComponent<GripCalculator>();
+                Debug.Log("GripCalculator 컴포넌트 자동 생성됨");
+            }
+
+            Debug.Log("커스텀 쥐는 강도 시스템 활성화");
+        }
+        else
+        {
+            Debug.Log("기본 Leap Motion GrabStrength 사용");
+        }
     }
 
     void Update()
@@ -155,7 +184,6 @@ public class HandController : MonoBehaviour
 
         Frame frame = leapController.Frame();
 
-        // 프레임에 손이 있는지 확인
         if (frame.Hands.Count == 0)
         {
             return false;
@@ -167,14 +195,12 @@ public class HandController : MonoBehaviour
         {
             if (hand == null) continue;
 
-            // 립모션 데이터를 Unity 좌표로 변환
             Vector3 palmPos;
             Vector3 palmNormal;
             Vector3 direction;
 
             if (useRawCoordinates)
             {
-                // 원본 좌표 그대로 사용 (립모션은 mm 단위)
                 palmPos = new Vector3(
                     hand.PalmPosition.x,
                     hand.PalmPosition.y,
@@ -195,7 +221,6 @@ public class HandController : MonoBehaviour
             }
             else
             {
-                // 기존 변환 방식 (Unity 미터 단위로 변환)
                 Vector3 leapPos = new Vector3(hand.PalmPosition.x, hand.PalmPosition.y, hand.PalmPosition.z);
                 Vector3 leapNormal = new Vector3(hand.PalmNormal.x, hand.PalmNormal.y, hand.PalmNormal.z);
                 Vector3 leapDir = new Vector3(hand.Direction.x, hand.Direction.y, hand.Direction.z);
@@ -216,8 +241,15 @@ public class HandController : MonoBehaviour
                 targetRightPos = palmPos;
                 targetRightRot = Quaternion.LookRotation(direction, palmNormal);
 
-                // 오른손 추가 데이터
-                RightHandGrabStrength = hand.GrabStrength;
+                // 수정된 부분: 커스텀 쥐는 강도 사용
+                if (useCustomGrabStrength && gripCalculator != null)
+                {
+                    RightHandGrabStrength = gripCalculator.CustomGrabStrength;
+                }
+                else
+                {
+                    RightHandGrabStrength = hand.GrabStrength;
+                }
 
                 // PalmVelocity 처리
                 if (useRawCoordinates)
@@ -252,7 +284,6 @@ public class HandController : MonoBehaviour
 
     Vector3 ConvertLeapToUnity(Vector3 leapVector)
     {
-        // 립모션 좌표를 Unity 좌표로 변환 (mm to m)
         float x = leapVector.x * 0.001f;
         float y = leapVector.y * 0.001f;
         float z = leapVector.z * 0.001f;
@@ -267,7 +298,6 @@ public class HandController : MonoBehaviour
 
     Vector3 ConvertLeapDirectionToUnity(Vector3 leapVector)
     {
-        // 방향 벡터는 크기 변환 없이 방향만 변환
         float x = leapVector.x;
         float y = leapVector.y;
         float z = leapVector.z;
@@ -282,34 +312,29 @@ public class HandController : MonoBehaviour
 
     void ApplySmoothing()
     {
-        // 부드러운 보간 적용
         float deltaTime = Time.deltaTime * smoothSpeed;
 
-        // 위치와 회전 보간
         LeftHandPosition = Vector3.Lerp(LeftHandPosition, targetLeftPos, deltaTime);
         RightHandPosition = Vector3.Lerp(RightHandPosition, targetRightPos, deltaTime);
         LeftHandRotation = Quaternion.Slerp(LeftHandRotation, targetLeftRot, deltaTime);
         RightHandRotation = Quaternion.Slerp(RightHandRotation, targetRightRot, deltaTime);
 
-        // Y축 좌표가 너무 낮으면 경고
+        // Y좌표가 너무 낮으면 경고
         if (LeftHandPosition.y < 0.1f && targetLeftPos.y > 0.5f)
         {
-            Debug.LogWarning($"왼손 Y축 불일치! 목표: {targetLeftPos.y:F2}, 현재: {LeftHandPosition.y:F2}");
-            // 강제로 Y축 동기화
+            Debug.LogWarning($"왼손 Y좌표 비정상! 목표: {targetLeftPos.y:F2}, 현재: {LeftHandPosition.y:F2}");
             LeftHandPosition = new Vector3(LeftHandPosition.x, targetLeftPos.y, LeftHandPosition.z);
         }
 
         if (RightHandPosition.y < 0.1f && targetRightPos.y > 0.5f)
         {
-            Debug.LogWarning($"오른손 Y축 불일치! 목표: {targetRightPos.y:F2}, 현재: {RightHandPosition.y:F2}");
-            // 강제로 Y축 동기화
+            Debug.LogWarning($"오른손 Y좌표 비정상! 목표: {targetRightPos.y:F2}, 현재: {RightHandPosition.y:F2}");
             RightHandPosition = new Vector3(RightHandPosition.x, targetRightPos.y, RightHandPosition.z);
         }
     }
 
     void UpdateTestModeHands()
     {
-        // 테스트 모드 손 조작
         Vector3 leftMove = Vector3.zero;
         if (Input.GetKey(leftHandUpKey)) leftMove += Vector3.up;
         if (Input.GetKey(leftHandDownKey)) leftMove += Vector3.down;
@@ -344,19 +369,63 @@ public class HandController : MonoBehaviour
         float distance = Vector3.Distance(LeftHandPosition, RightHandPosition);
         bool isInRange = distance <= maxStrikeDistance;
 
-        if (!wasGripping && isGripping && hasVelocity && isInRange)
+        // 새로 추가된 조건들
+        bool hasDownwardMotion = CheckDownward();
+        bool hasSwingMotion = CheckSwing();
+        bool meetsMinimumForce = CheckMinForce();
+
+        // 강화된 타격 감지 조건
+        if (!wasGripping && isGripping && hasVelocity && isInRange &&
+            hasDownwardMotion && hasSwingMotion && meetsMinimumForce)
         {
             IsStrikeDetected = true;
 
             Vector3 strikePosition = GetChiselTargetPoint();
             Vector3 strikeDirection = (strikePosition - RightHandPosition).normalized;
 
-            OnHammerStrike?.Invoke(strikePosition, strikeDirection, RightHandGrabStrength);
+            // 타격 힘 강도 계산 (속도 + 쥐는 강도)
+            float strikeForce = CalcStrikeForce();
 
-            Debug.Log($"타격 감지! 위치: {strikePosition:F2}");
+            OnHammerStrike?.Invoke(strikePosition, strikeDirection, strikeForce);
+
+            Debug.Log($"망치 타격 감지! 위치: {strikePosition:F2}, 힘: {strikeForce:F2}");
         }
 
         wasGripping = isGripping;
+    }
+
+    bool CheckDownward()
+    {
+        float downwardVelocity = -RightHandVelocity.y;
+        return downwardVelocity > minDownwardVelocity;
+    }
+
+    bool CheckSwing()
+    {
+        float totalSpeed = RightHandVelocity.magnitude;
+        float downwardSpeed = Mathf.Abs(RightHandVelocity.y);
+
+        if (totalSpeed < minTotalVelocity) return false;
+
+        float downwardRatio = downwardSpeed / totalSpeed;
+        return downwardRatio > 0.3f;
+    }
+
+    bool CheckMinForce()
+    {
+        float calculatedForce = CalcStrikeForce();
+        return calculatedForce > 0.1f;
+    }
+
+    float CalcStrikeForce()
+    {
+        // 속도 기여분 (60%)
+        float velocityContribution = Mathf.Clamp01(RightHandVelocity.magnitude / maxVelocityForStrike) * 0.6f;
+
+        // 쥐는 강도 기여분 (40%)
+        float gripContribution = RightHandGrabStrength * 0.4f;
+
+        return Mathf.Clamp01(velocityContribution + gripContribution);
     }
 
     void UpdateHandVisuals()
@@ -397,14 +466,61 @@ public class HandController : MonoBehaviour
             (leapDataReceived ? "립모션 활성" : "립모션 대기중") :
             "테스트 모드";
 
+        string gripType = useCustomGrabStrength ? "커스텀" : "기본";
+
         Debug.Log($"[HandController] 상태: {status}");
         Debug.Log($"왼손: {LeftHandPosition:F2}, 오른손: {RightHandPosition:F2}");
-        Debug.Log($"그립: {RightHandGrabStrength:F2}, 속도: {RightHandVelocity.magnitude:F2}");
+        Debug.Log($"쥐는 강도 ({gripType}): {RightHandGrabStrength:F2}, 속도: {RightHandVelocity.magnitude:F2}");
+
+        if (useCustomGrabStrength && gripCalculator != null)
+        {
+            Debug.Log($"커스텀 쥐는 강도 상세: 민감도={gripCalculator.sensitivity:F1}");
+        }
 
         if (leapController != null)
         {
             Debug.Log($"립모션 연결: {leapController.IsConnected}, 서비스: {leapController.IsServiceConnected}");
         }
+    }
+
+    public void SetCustomGripEnabled(bool enabled)
+    {
+        useCustomGrabStrength = enabled;
+
+        if (enabled && gripCalculator == null)
+        {
+            InitializeGripCalculator();
+        }
+
+        Debug.Log($"커스텀 쥐는 강도 시스템: {(enabled ? "활성화" : "비활성화")}");
+    }
+
+    public string GetGripSystemInfo()
+    {
+        if (useCustomGrabStrength && gripCalculator != null)
+        {
+            return $"커스텀 (민감도: {gripCalculator.sensitivity:F1})";
+        }
+        return "기본 Leap Motion";
+    }
+
+    [ContextMenu("쥐는 강도 시스템 전환")]
+    public void ToggleGripSystem()
+    {
+        SetCustomGripEnabled(!useCustomGrabStrength);
+    }
+
+    [ContextMenu("현재 손 상태 출력")]
+    public void PrintCurrentHandStatus()
+    {
+        Debug.Log("=== 현재 손 상태 ===");
+        Debug.Log($"쥐는 강도 시스템: {GetGripSystemInfo()}");
+        Debug.Log($"왼손 위치: {LeftHandPosition:F2}");
+        Debug.Log($"오른손 위치: {RightHandPosition:F2}");
+        Debug.Log($"쥐는 강도: {RightHandGrabStrength:F2}");
+        Debug.Log($"손 속도: {RightHandVelocity.magnitude:F2}");
+        Debug.Log($"타격 감지: {IsStrikeDetected}");
+        Debug.Log("===================");
     }
 
     void OnDrawGizmos()
@@ -427,5 +543,13 @@ public class HandController : MonoBehaviour
         Gizmos.color = Color.green;
         Vector3 chiselForward = LeftHandRotation * Vector3.forward;
         Gizmos.DrawRay(LeftHandPosition, chiselForward * 0.5f);
+
+        // 쥐는 강도 시각화 - 주황색 (강도에 따라 크기 변함)
+        if (useCustomGrabStrength)
+        {
+            Gizmos.color = Color.magenta;
+            float gripSize = 0.02f + (RightHandGrabStrength * 0.08f);
+            Gizmos.DrawSphere(RightHandPosition + Vector3.up * 0.1f, gripSize);
+        }
     }
 }

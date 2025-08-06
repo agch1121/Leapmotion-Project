@@ -1,10 +1,9 @@
-﻿using LibreFracture;
-using UnityEngine;
-using System.Collections.Generic;
+﻿using UnityEngine;
+using LibreFracture;
 
 /// <summary>
-/// 광물 블록 구조 및 기본 채굴 로직 처리 (Test.cs 간소화 버전)
-/// 주요 게임 로직은 GameManager로 이동됨
+/// 광물 블록 구조 및 힘 기반 채굴 로직 처리
+/// 힘 강도에 따른 차별화된 채굴 효과와 더 관대한 채굴 시스템
 /// </summary>
 public class MineralBlock : MonoBehaviour
 {
@@ -23,8 +22,8 @@ public class MineralBlock : MonoBehaviour
     public float miningForceIntensity = 20f;
 
     [Header("스테이지별 설정")]
-    public float hardness = 1.0f;      // StageManager에서 설정하는 광물 경도
-    public float gemQuality = 1.0f;    // StageManager에서 설정하는 보석 품질
+    public float hardness = 1.0f;
+    public float gemQuality = 1.0f;
 
     // 시스템 참조들
     private ChunkGraphManager chunkGraphManager;
@@ -53,6 +52,7 @@ public class MineralBlock : MonoBehaviour
 
     void FindSystemReferences()
     {
+        // 로컬 컴포넌트들
         chunkGraphManager = GetComponent<ChunkGraphManager>();
         gemProtectionSystem = GetComponent<GemProtectionSystem>();
         chunkCounter = GetComponent<ChunkCounter>();
@@ -68,6 +68,7 @@ public class MineralBlock : MonoBehaviour
             audioSource = gameObject.AddComponent<AudioSource>();
         }
 
+        // 전역 매니저들
         gameManager = FindFirstObjectByType<GameManager>();
         handController = FindFirstObjectByType<HandController>();
 
@@ -84,11 +85,13 @@ public class MineralBlock : MonoBehaviour
 
     void SubscribeToEvents()
     {
+        // ChunkCounter 이벤트를 GameManager로 전달
         if (chunkCounter != null && gameManager != null)
         {
             chunkCounter.OnChunkCountChanged += gameManager.OnMineralProgressChanged;
         }
 
+        // HandController 망치 타격 이벤트 구독
         if (handController != null)
         {
             handController.OnHammerStrike += OnHammerStrike;
@@ -115,7 +118,7 @@ public class MineralBlock : MonoBehaviour
 
     void RefreshChunkCache()
     {
-        var validChunks = new List<ChunkNode>();
+        var validChunks = new System.Collections.Generic.List<ChunkNode>();
 
         ChunkNode[] foundChunks = GetComponentsInChildren<ChunkNode>();
         foreach (ChunkNode chunk in foundChunks)
@@ -131,8 +134,10 @@ public class MineralBlock : MonoBehaviour
 
     void Update()
     {
+        // 게임이 시작되지 않았으면 입력 무시
         if (gameManager == null || !gameManager.IsGameStarted) return;
 
+        // 마우스 클릭 처리 (테스트용)
         if (Input.GetMouseButtonDown(0))
         {
             HandleMouseClick();
@@ -153,9 +158,12 @@ public class MineralBlock : MonoBehaviour
         }
     }
 
-    public void OnHammerStrike(Vector3 position, Vector3 direction, float force)
+    /// <summary>
+    /// HandController에서 발생하는 망치 타격 이벤트 처리 - 강화된 버전
+    /// </summary>
+    public void OnHammerStrike(Vector3 position, Vector3 direction, float strikeForce)
     {
-        Debug.Log($"망치 타격 감지! 위치: {position}, 힘: {force:F2}");
+        Debug.Log($"망치 타격 감지! 위치: {position}, 방향: {direction}, 힘: {strikeForce:F2}");
 
         if (gameManager == null || !gameManager.IsGameStarted)
         {
@@ -164,24 +172,192 @@ public class MineralBlock : MonoBehaviour
         }
 
         Vector3 surfaceNormal = -direction;
-        MineAtPoint(position, surfaceNormal);
+        MineAtPointForce(position, surfaceNormal, strikeForce);
     }
 
-    public void MineAtPoint(Vector3 miningPoint, Vector3 surfaceNormal)
+    /// <summary>
+    /// 힘 강도를 고려한 채굴 실행 - 유연한 채굴 + 차별화된 효과
+    /// </summary>
+    public void MineAtPointForce(Vector3 miningPoint, Vector3 surfaceNormal, float strikeForce)
     {
+        Debug.Log($"힘 강도별 채굴 시작: {strikeForce * 100f:F0}%");
+
+        // 1. 보석 보호 시스템에 충격 전달
         if (gemProtectionSystem != null)
         {
-            float adjustedForce = miningForceIntensity * hardness;
+            float adjustedForce = CalcAdjustedForce(strikeForce);
             gemProtectionSystem.CheckMiningImpactOnGems(miningPoint, adjustedForce);
         }
 
-        CreateMiningEffect(miningPoint, surfaceNormal);
+        // 2. 힘 강도별 차별화된 채굴 효과 생성
+        CreateForceEffect(miningPoint, surfaceNormal, strikeForce);
 
+        // 3. 채굴 사운드 재생 (힘에 따라 볼륨 조절)
         if (miningSound != null && audioSource != null)
         {
-            audioSource.PlayOneShot(miningSound);
+            float volume = Mathf.Lerp(0.3f, 1.0f, strikeForce);
+            audioSource.PlayOneShot(miningSound, volume);
         }
 
+        // 4. 실제 조각 제거 (더 관대함)
+        RemoveChunksForce(miningPoint, strikeForce, surfaceNormal);
+    }
+
+    /// <summary>
+    /// 기본 채굴 (마우스 클릭용)
+    /// </summary>
+    public void MineAtPoint(Vector3 miningPoint, Vector3 surfaceNormal)
+    {
+        // 기본 힘으로 채굴 (중간 강도)
+        MineAtPointForce(miningPoint, surfaceNormal, 0.5f);
+    }
+
+    /// <summary>
+    /// 보석 보호용 힘 계산 (더 관대하게 조정)
+    /// </summary>
+    float CalcAdjustedForce(float strikeForce)
+    {
+        float baseForce = miningForceIntensity * 0.7f; // 30% 감소
+        float forceMultiplier = Mathf.Lerp(0.5f, 1.5f, strikeForce);
+
+        return baseForce * forceMultiplier * hardness;
+    }
+
+    /// <summary>
+    /// 힘 강도별 차별화된 채굴 효과
+    /// </summary>
+    void CreateForceEffect(Vector3 position, Vector3 normal, float strikeForce)
+    {
+        int dustCount = CalcDustCount(strikeForce);
+        int chipCount = CalcChipCount(strikeForce);
+
+        Debug.Log($"채굴 효과: 먼지 {dustCount}개, 조각 {chipCount}개 (힘: {strikeForce * 100f:F0}%)");
+
+        for (int i = 0; i < dustCount; i++)
+        {
+            CreateDust(position, normal, strikeForce);
+        }
+
+        for (int i = 0; i < chipCount; i++)
+        {
+            CreateChip(position, normal, strikeForce);
+        }
+
+        if (strikeForce > 0.8f)
+        {
+            CreateDangerEffect(position, normal);
+        }
+    }
+
+    /// <summary>
+    /// 힘 강도에 따른 먼지 개수 계산
+    /// </summary>
+    int CalcDustCount(float strikeForce)
+    {
+        if (strikeForce < 0.3f)
+            return Random.Range(1, 3);
+        else if (strikeForce < 0.7f)
+            return Random.Range(3, 6);
+        else
+            return Random.Range(6, 11);
+    }
+
+    /// <summary>
+    /// 힘 강도에 따른 조각 개수 계산
+    /// </summary>
+    int CalcChipCount(float strikeForce)
+    {
+        if (strikeForce < 0.3f)
+            return Random.Range(0, 2);
+        else if (strikeForce < 0.7f)
+            return Random.Range(1, 4);
+        else
+            return Random.Range(3, 7);
+    }
+
+    /// <summary>
+    /// 개별 먼지 파티클 생성
+    /// </summary>
+    void CreateDust(Vector3 position, Vector3 normal, float strikeForce)
+    {
+        GameObject dust = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        dust.transform.position = position + Random.insideUnitSphere * 0.1f;
+
+        float size = Random.Range(0.015f, 0.04f) * (0.5f + strikeForce);
+        dust.transform.localScale = Vector3.one * size;
+
+        Renderer dustRenderer = dust.GetComponent<Renderer>();
+
+        float colorIntensity = 0.4f + (strikeForce * 0.3f);
+        dustRenderer.material.color = new Color(0.7f * colorIntensity, 0.6f * colorIntensity, 0.4f * colorIntensity);
+
+        Rigidbody dustRb = dust.AddComponent<Rigidbody>();
+
+        float forceMultiplier = 0.5f + (strikeForce * 1.5f);
+        Vector3 force = normal * Random.Range(1f, 3f) * forceMultiplier + Random.insideUnitSphere * 0.5f;
+        dustRb.AddForce(force, ForceMode.Impulse);
+
+        float lifetime = 1.0f + (strikeForce * 1.0f);
+        Destroy(dust, lifetime);
+    }
+
+    /// <summary>
+    /// 개별 조각 파티클 생성
+    /// </summary>
+    void CreateChip(Vector3 position, Vector3 normal, float strikeForce)
+    {
+        GameObject chip = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        chip.transform.position = position + Random.insideUnitSphere * 0.05f;
+
+        float size = Random.Range(0.02f, 0.06f) * (0.7f + strikeForce);
+        chip.transform.localScale = Vector3.one * size;
+        chip.transform.rotation = Random.rotation;
+
+        Renderer chipRenderer = chip.GetComponent<Renderer>();
+
+        float grayIntensity = 0.3f + (strikeForce * 0.2f);
+        chipRenderer.material.color = new Color(0.5f + grayIntensity, 0.4f + grayIntensity, 0.3f + grayIntensity);
+
+        Rigidbody chipRb = chip.AddComponent<Rigidbody>();
+
+        float forceMultiplier = 1.0f + (strikeForce * 2.0f);
+        Vector3 chipForce = normal * Random.Range(2f, 5f) * forceMultiplier + Random.insideUnitSphere * 1f;
+        chipRb.AddForce(chipForce, ForceMode.Impulse);
+
+        float lifetime = 1.5f + (strikeForce * 1.5f);
+        Destroy(chip, lifetime);
+    }
+
+    /// <summary>
+    /// 위험한 강도일 때 추가 효과
+    /// </summary>
+    void CreateDangerEffect(Vector3 position, Vector3 normal)
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            GameObject danger = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            danger.transform.position = position + Random.insideUnitSphere * 0.15f;
+            danger.transform.localScale = Vector3.one * Random.Range(0.03f, 0.08f);
+
+            Renderer dangerRenderer = danger.GetComponent<Renderer>();
+            dangerRenderer.material.color = Color.red;
+            dangerRenderer.material.SetFloat("_Metallic", 0.8f);
+
+            Rigidbody dangerRb = danger.AddComponent<Rigidbody>();
+            Vector3 dangerForce = normal * Random.Range(3f, 7f) + Random.insideUnitSphere * 2f;
+            dangerRb.AddForce(dangerForce, ForceMode.Impulse);
+
+            Destroy(danger, 0.8f);
+        }
+
+        Debug.Log("위험한 힘! 보석 손상 위험 증가");
+    }
+
+    /// <summary>
+    /// 힘을 고려한 조각 제거 (더 관대함)
+    /// </summary>
+    void RemoveChunksForce(Vector3 miningPoint, float strikeForce, Vector3 surfaceNormal)
+    {
         var activeChunks = System.Array.FindAll(allChunks, chunk =>
             chunk != null &&
             chunk.gameObject != null &&
@@ -190,7 +366,7 @@ public class MineralBlock : MonoBehaviour
 
         if (activeChunks.Length == 0)
         {
-            Debug.Log("더 이상 채굴할 조각이 없습니다. (캐시 갱신 시도 중...)");
+            Debug.Log("더 이상 채굴할 조각이 없습니다.");
             RefreshChunkCache();
             return;
         }
@@ -202,31 +378,53 @@ public class MineralBlock : MonoBehaviour
             return distA.CompareTo(distB);
         });
 
+        int maxChunksToRemove = CalcChunksToRemove(strikeForce);
         int chunksRemoved = 0;
 
         foreach (ChunkNode chunk in activeChunks)
         {
-            if (chunksRemoved >= chunksPerClick) break;
+            if (chunksRemoved >= maxChunksToRemove) break;
 
             float distance = Vector3.Distance(chunk.transform.position, miningPoint);
-            if (distance <= miningRadius)
+
+            float adjustedRadius = miningRadius * (0.7f + (strikeForce * 0.6f));
+            if (distance <= adjustedRadius)
             {
-                RemoveChunkGently(chunk, miningPoint, surfaceNormal);
+                RemoveChunkForce(chunk, miningPoint, surfaceNormal, strikeForce);
                 chunksRemoved++;
             }
         }
+
+        Debug.Log($"채굴 완료: {chunksRemoved}개 조각 제거 (힘: {strikeForce * 100f:F0}%)");
     }
 
-    void RemoveChunkGently(ChunkNode chunk, Vector3 miningPoint, Vector3 surfaceNormal)
+    /// <summary>
+    /// 힘에 따른 채굴할 조각 개수 계산
+    /// </summary>
+    int CalcChunksToRemove(float strikeForce)
+    {
+        if (strikeForce < 0.3f)
+            return 1;
+        else if (strikeForce < 0.7f)
+            return Random.Range(1, 3);
+        else
+            return Random.Range(2, 4);
+    }
+
+    /// <summary>
+    /// 힘을 고려한 부드러운 조각 제거
+    /// </summary>
+    void RemoveChunkForce(ChunkNode chunk, Vector3 miningPoint, Vector3 surfaceNormal, float strikeForce)
     {
         if (chunk == null || chunk.gameObject == null) return;
 
         BreakChunkConnections(chunk);
-        ApplyGentleForce(chunk, surfaceNormal);
+        ApplyForcePhysics(chunk, miningPoint, surfaceNormal, strikeForce);
 
         if (chunkFallSounds != null && chunkFallSounds.Length > 0)
         {
-            StartCoroutine(PlayDelayedFallSound(Random.Range(0.2f, 0.8f)));
+            float delay = Random.Range(0.1f, 0.6f);
+            StartCoroutine(PlayDelayedFallSound(delay));
         }
     }
 
@@ -237,65 +435,35 @@ public class MineralBlock : MonoBehaviour
         Joint[] joints = chunk.GetComponents<Joint>();
         foreach (Joint joint in joints)
         {
-            if (joint != null)
-                Destroy(joint);
+            if (joint != null) Destroy(joint);
         }
 
         FixedJoint[] fixedJoints = chunk.GetComponents<FixedJoint>();
         foreach (FixedJoint fixedJoint in fixedJoints)
         {
-            if (fixedJoint != null)
-                Destroy(fixedJoint);
+            if (fixedJoint != null) Destroy(fixedJoint);
         }
     }
 
-    void ApplyGentleForce(ChunkNode chunk, Vector3 surfaceNormal)
+    /// <summary>
+    /// 힘에 따른 물리력 적용
+    /// </summary>
+    void ApplyForcePhysics(ChunkNode chunk, Vector3 miningPoint, Vector3 surfaceNormal, float strikeForce)
     {
         Rigidbody rb = chunk.GetComponent<Rigidbody>();
         if (rb == null) return;
 
-        Vector3 forceDirection = (chunk.transform.position - transform.position).normalized;
+        Vector3 forceDirection = (chunk.transform.position - miningPoint).normalized;
         forceDirection.y = Mathf.Max(forceDirection.y, 0.1f);
 
-        float adjustedForce = gentleForce * hardness;
-        rb.AddForce(forceDirection * adjustedForce, ForceMode.Impulse);
-        rb.AddTorque(Random.insideUnitSphere * adjustedForce * 0.2f, ForceMode.Impulse);
-    }
+        float baseForce = gentleForce * hardness;
+        float forceMultiplier = 0.8f + (strikeForce * 1.4f);
+        float finalForce = baseForce * forceMultiplier;
 
-    void CreateMiningEffect(Vector3 position, Vector3 normal)
-    {
-        for (int i = 0; i < 3; i++)
-        {
-            GameObject dust = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            dust.transform.position = position + Random.insideUnitSphere * 0.1f;
-            dust.transform.localScale = Vector3.one * Random.Range(0.02f, 0.05f);
+        rb.AddForce(forceDirection * finalForce, ForceMode.Impulse);
+        rb.AddTorque(Random.insideUnitSphere * finalForce * 0.3f, ForceMode.Impulse);
 
-            Renderer dustRenderer = dust.GetComponent<Renderer>();
-            dustRenderer.material.color = new Color(0.7f, 0.6f, 0.4f);
-
-            Rigidbody dustRb = dust.AddComponent<Rigidbody>();
-            Vector3 force = normal * Random.Range(1f, 3f) + Random.insideUnitSphere * 0.5f;
-            dustRb.AddForce(force, ForceMode.Impulse);
-
-            Destroy(dust, 1.5f);
-        }
-
-        for (int i = 0; i < 2; i++)
-        {
-            GameObject chip = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            chip.transform.position = position + Random.insideUnitSphere * 0.05f;
-            chip.transform.localScale = Vector3.one * Random.Range(0.03f, 0.07f);
-            chip.transform.rotation = Random.rotation;
-
-            Renderer chipRenderer = chip.GetComponent<Renderer>();
-            chipRenderer.material.color = new Color(0.5f, 0.4f, 0.3f);
-
-            Rigidbody chipRb = chip.AddComponent<Rigidbody>();
-            Vector3 chipForce = normal * Random.Range(2f, 5f) + Random.insideUnitSphere * 1f;
-            chipRb.AddForce(chipForce, ForceMode.Impulse);
-
-            Destroy(chip, 2f);
-        }
+        Debug.Log($"조각 물리력 적용: {finalForce:F1} (기본: {baseForce:F1}, 배율: {forceMultiplier:F1})");
     }
 
     System.Collections.IEnumerator PlayDelayedFallSound(float delay)
@@ -311,6 +479,7 @@ public class MineralBlock : MonoBehaviour
 
     void OnDestroy()
     {
+        // 이벤트 구독 해제
         if (chunkCounter != null && gameManager != null)
         {
             chunkCounter.OnChunkCountChanged -= gameManager.OnMineralProgressChanged;
