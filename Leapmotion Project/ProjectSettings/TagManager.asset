@@ -12,6 +12,7 @@ TagManager:
   - Chisel
   - StoneChunk
   - UI
+  - Gem
   layers:
   - Default
   - TransparentFX

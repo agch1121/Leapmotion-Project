@@ -2,15 +2,15 @@ using UnityEngine;
 using Leap;
 
 /// <summary>
-/// 립모션 기반 양손 추적 시스템
+/// 립모션 기반 양손 추적 시스템 - 데이터 처리 개선 버전
 /// 왼손: 끌 고정, 오른손: 망치 고정
 /// </summary>
 public class HandController : MonoBehaviour
 {
     [Header("립모션 설정")]
-    public bool useLeapMotion = true; // 립모션 사용 여부
+    public bool useLeapMotion = true;
 
-    [Header("테스트 모드 (립모션 없을 때)")]
+    [Header("테스트 모드")]
     public bool enableTestMode = true;
     public KeyCode leftHandUpKey = KeyCode.W;
     public KeyCode leftHandDownKey = KeyCode.S;
@@ -18,19 +18,21 @@ public class HandController : MonoBehaviour
     public KeyCode leftHandRightKey = KeyCode.D;
     public KeyCode hammerStrikeKey = KeyCode.Space;
 
-    [Header("립모션 좌표 보정")]
-    public Vector3 leapMotionOffset = new Vector3(0f, 1.5f, 0f); // 높이 보정
-    public float leapMotionScale = 0.001f; // mm to m 변환 스케일
-    public bool invertZ = true; // Z축 반전 여부
+    [Header("립모션 좌표 변환")]
+    public bool useRawCoordinates = true; // 원본 좌표 사용 여부
+    public float coordinateScale = 1f; // 좌표 스케일 (1 = 원본 크기)
+    public bool invertZ = false; // Z축 반전 옵션
 
-    [Header("손 위치 설정")]
-    public Transform leftHandVisual; // 왼손 시각적 표현 (끌)
-    public Transform rightHandVisual; // 오른손 시각적 표현 (망치)
-    public float handMoveSpeed = 2f; // 테스트 모드 손 이동 속도
+    [Header("손 시각화")]
+    public Transform leftHandVisual;
+    public Transform rightHandVisual;
+    public float handMoveSpeed = 2f;
+    public float smoothSpeed = 10f; // 부드러운 움직임을 위한 보간 속도
 
     [Header("채굴 설정")]
-    public float strikeDetectionThreshold = 0.7f; // 타격 감지 임계값
-    public float maxStrikeDistance = 0.8f; // 최대 타격 거리 (늘림)
+    public float strikeDetectionThreshold = 0.5f;
+    public float maxStrikeDistance = 2.0f;
+    public float velocityThreshold = 0.1f; // 더 낮춘 속도 임계값
 
     // 립모션 컨트롤러
     private Controller leapController;
@@ -43,17 +45,26 @@ public class HandController : MonoBehaviour
     public float RightHandGrabStrength { get; private set; }
     public Vector3 RightHandVelocity { get; private set; }
 
+    // 부드러운 움직임을 위한 변수
+    private Vector3 targetLeftPos;
+    private Vector3 targetRightPos;
+    private Quaternion targetLeftRot;
+    private Quaternion targetRightRot;
+
     // 타격 감지
     public bool IsStrikeDetected { get; private set; }
     private bool wasGripping = false;
 
     // 이벤트
-    public System.Action<Vector3, Vector3, float> OnHammerStrike; // (위치, 방향, 힘)
+    public System.Action<Vector3, Vector3, float> OnHammerStrike;
 
-    // 테스트 모드 변수들
-    private Vector3 testLeftHandPos = new Vector3(-0.5f, 1.2f, 0f);  // 더 멀리 배치
-    private Vector3 testRightHandPos = new Vector3(0.5f, 1.2f, 0f);   // 더 멀리 배치
-    private bool testModeStrike = false;
+    // 테스트 모드 변수
+    private Vector3 testLeftHandPos = new Vector3(-0.5f, 1.2f, 0f);
+    private Vector3 testRightHandPos = new Vector3(0.5f, 1.2f, 0f);
+
+    // 디버그용
+    private float lastDebugTime = 0f;
+    private bool hasReceivedValidData = false;
 
     void Start()
     {
@@ -62,119 +73,243 @@ public class HandController : MonoBehaviour
 
     void InitializeHandController()
     {
-        Debug.Log("HandController 시작");
+        Debug.Log("=== HandController 초기화 시작 ===");
 
-        // 립모션 초기화 시도 (SDK 없으면 에러 무시)
-        try
+        // 립모션 초기화
+        if (useLeapMotion)
         {
-            if (useLeapMotion)
+            try
             {
                 leapController = new Controller();
-                Debug.Log("립모션 컨트롤러 초기화 성공");
+
+                // 립모션 설정 확인
+                if (leapController.IsConnected)
+                {
+                    Debug.Log("립모션 디바이스 연결됨!");
+                }
+                else
+                {
+                    Debug.LogWarning("립모션 디바이스가 연결되지 않음 - 테스트 모드 활성화");
+                    enableTestMode = true;
+                }
             }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogWarning($"립모션 SDK 없음 - 테스트 모드로 전환: {e.Message}");
-            useLeapMotion = false;
-            enableTestMode = true;
+            catch (System.Exception e)
+            {
+                Debug.LogError($"립모션 초기화 실패: {e.Message}");
+                useLeapMotion = false;
+                enableTestMode = true;
+            }
         }
 
         // 초기 위치 설정
         LeftHandPosition = testLeftHandPos;
         RightHandPosition = testRightHandPos;
+        targetLeftPos = testLeftHandPos;
+        targetRightPos = testRightHandPos;
+
         LeftHandRotation = Quaternion.identity;
         RightHandRotation = Quaternion.identity;
+        targetLeftRot = Quaternion.identity;
+        targetRightRot = Quaternion.identity;
 
         UpdateHandVisuals();
     }
 
     void Update()
     {
+        bool leapDataReceived = false;
+
+        // 립모션 데이터 처리
         if (useLeapMotion && leapController != null)
         {
-            UpdateLeapMotionHands();
+            leapDataReceived = ProcessLeapMotionData();
         }
-        else if (enableTestMode)
+
+        // 립모션 데이터가 없으면 테스트 모드
+        if (!leapDataReceived && enableTestMode)
         {
             UpdateTestModeHands();
         }
 
+        // 부드러운 보간 적용
+        ApplySmoothing();
+
+        // 타격 감지 및 시각화 업데이트
         DetectHammerStrike();
         UpdateHandVisuals();
+
+        // 디버그 출력 (10초마다)
+        if (Time.time - lastDebugTime > 10f)
+        {
+            PrintDebugInfo(leapDataReceived);
+            lastDebugTime = Time.time;
+        }
     }
 
-    /// <summary>
-    /// 립모션 손 데이터 업데이트 (SDK 설치 후 동작)
-    /// </summary>
-    void UpdateLeapMotionHands()
+    bool ProcessLeapMotionData()
     {
-        try
+        if (leapController == null || !leapController.IsConnected)
         {
-            Frame frame = leapController.Frame();
+            return false;
+        }
 
-            Hand leftHand = null;
-            Hand rightHand = null;
+        Frame frame = leapController.Frame();
 
-            // 양손 찾기
-            foreach (Hand hand in frame.Hands)
+        // 프레임에 손이 있는지 확인
+        if (frame.Hands.Count == 0)
+        {
+            return false;
+        }
+
+        bool dataProcessed = false;
+
+        foreach (Hand hand in frame.Hands)
+        {
+            if (hand == null) continue;
+
+            // 립모션 데이터를 Unity 좌표로 변환
+            Vector3 palmPos;
+            Vector3 palmNormal;
+            Vector3 direction;
+
+            if (useRawCoordinates)
             {
-                if (hand.IsLeft) leftHand = hand;
-                if (hand.IsRight) rightHand = hand;
-            }
+                // 원본 좌표 그대로 사용 (립모션은 mm 단위)
+                palmPos = new Vector3(
+                    hand.PalmPosition.x,
+                    hand.PalmPosition.y,
+                    invertZ ? -hand.PalmPosition.z : hand.PalmPosition.z
+                ) * coordinateScale;
 
-            // 왼손 데이터 (끌 제어용) - 오프셋 추가
-            if (leftHand != null)
-            {
-                LeftHandPosition = new Vector3(
-                    leftHand.PalmPosition.x * leapMotionScale,
-                    leftHand.PalmPosition.y * leapMotionScale,
-                    (invertZ ? -leftHand.PalmPosition.z : leftHand.PalmPosition.z) * leapMotionScale
-                ) + leapMotionOffset;
+                palmNormal = new Vector3(
+                    hand.PalmNormal.x,
+                    hand.PalmNormal.y,
+                    invertZ ? -hand.PalmNormal.z : hand.PalmNormal.z
+                );
 
-                Vector3 palmNormal = new Vector3(leftHand.PalmNormal.x, leftHand.PalmNormal.y,
-                    invertZ ? -leftHand.PalmNormal.z : leftHand.PalmNormal.z);
-                Vector3 direction = new Vector3(leftHand.Direction.x, leftHand.Direction.y,
-                    invertZ ? -leftHand.Direction.z : leftHand.Direction.z);
-                LeftHandRotation = Quaternion.LookRotation(direction, palmNormal);
-            }
-
-            // 오른손 데이터 (망치 제어용) - 오프셋 추가
-            if (rightHand != null)
-            {
-                RightHandPosition = new Vector3(
-                    rightHand.PalmPosition.x * leapMotionScale,
-                    rightHand.PalmPosition.y * leapMotionScale,
-                    (invertZ ? -rightHand.PalmPosition.z : rightHand.PalmPosition.z) * leapMotionScale
-                ) + leapMotionOffset;
-
-                Vector3 palmNormal = new Vector3(rightHand.PalmNormal.x, rightHand.PalmNormal.y,
-                    invertZ ? -rightHand.PalmNormal.z : rightHand.PalmNormal.z);
-                Vector3 direction = new Vector3(rightHand.Direction.x, rightHand.Direction.y,
-                    invertZ ? -rightHand.Direction.z : rightHand.Direction.z);
-                RightHandRotation = Quaternion.LookRotation(direction, palmNormal);
-
-                RightHandGrabStrength = rightHand.GrabStrength;
-
-                RightHandVelocity = new Vector3(
-                    rightHand.PalmVelocity.x * leapMotionScale,
-                    rightHand.PalmVelocity.y * leapMotionScale,
-                    (invertZ ? -rightHand.PalmVelocity.z : rightHand.PalmVelocity.z) * leapMotionScale
+                direction = new Vector3(
+                    hand.Direction.x,
+                    hand.Direction.y,
+                    invertZ ? -hand.Direction.z : hand.Direction.z
                 );
             }
+            else
+            {
+                // 기존 변환 방식 (Unity 미터 단위로 변환)
+                Vector3 leapPos = new Vector3(hand.PalmPosition.x, hand.PalmPosition.y, hand.PalmPosition.z);
+                Vector3 leapNormal = new Vector3(hand.PalmNormal.x, hand.PalmNormal.y, hand.PalmNormal.z);
+                Vector3 leapDir = new Vector3(hand.Direction.x, hand.Direction.y, hand.Direction.z);
+
+                palmPos = ConvertLeapToUnity(leapPos);
+                palmNormal = ConvertLeapDirectionToUnity(leapNormal);
+                direction = ConvertLeapDirectionToUnity(leapDir);
+            }
+
+            if (hand.IsLeft)
+            {
+                targetLeftPos = palmPos;
+                targetLeftRot = Quaternion.LookRotation(direction, palmNormal);
+                dataProcessed = true;
+            }
+            else if (hand.IsRight)
+            {
+                targetRightPos = palmPos;
+                targetRightRot = Quaternion.LookRotation(direction, palmNormal);
+
+                // 오른손 추가 데이터
+                RightHandGrabStrength = hand.GrabStrength;
+
+                // PalmVelocity 처리
+                if (useRawCoordinates)
+                {
+                    RightHandVelocity = new Vector3(
+                        hand.PalmVelocity.x,
+                        hand.PalmVelocity.y,
+                        invertZ ? -hand.PalmVelocity.z : hand.PalmVelocity.z
+                    ) * coordinateScale;
+                }
+                else
+                {
+                    Vector3 velocity = new Vector3(
+                        hand.PalmVelocity.x,
+                        hand.PalmVelocity.y,
+                        hand.PalmVelocity.z
+                    );
+                    RightHandVelocity = velocity * 0.001f; // mm/s to m/s
+                }
+
+                dataProcessed = true;
+            }
         }
-        catch (System.Exception e)
+
+        if (dataProcessed && !hasReceivedValidData)
         {
-            Debug.LogWarning($"립모션 데이터 읽기 실패: {e.Message}");
+            hasReceivedValidData = true;
+        }
+
+        return dataProcessed;
+    }
+
+    Vector3 ConvertLeapToUnity(Vector3 leapVector)
+    {
+        // 립모션 좌표를 Unity 좌표로 변환 (mm to m)
+        float x = leapVector.x * 0.001f;
+        float y = leapVector.y * 0.001f;
+        float z = leapVector.z * 0.001f;
+
+        if (invertZ)
+        {
+            z = -z;
+        }
+
+        return new Vector3(x, y, z);
+    }
+
+    Vector3 ConvertLeapDirectionToUnity(Vector3 leapVector)
+    {
+        // 방향 벡터는 크기 변환 없이 방향만 변환
+        float x = leapVector.x;
+        float y = leapVector.y;
+        float z = leapVector.z;
+
+        if (invertZ)
+        {
+            z = -z;
+        }
+
+        return new Vector3(x, y, z).normalized;
+    }
+
+    void ApplySmoothing()
+    {
+        // 부드러운 보간 적용
+        float deltaTime = Time.deltaTime * smoothSpeed;
+
+        // 위치와 회전 보간
+        LeftHandPosition = Vector3.Lerp(LeftHandPosition, targetLeftPos, deltaTime);
+        RightHandPosition = Vector3.Lerp(RightHandPosition, targetRightPos, deltaTime);
+        LeftHandRotation = Quaternion.Slerp(LeftHandRotation, targetLeftRot, deltaTime);
+        RightHandRotation = Quaternion.Slerp(RightHandRotation, targetRightRot, deltaTime);
+
+        // Y축 좌표가 너무 낮으면 경고
+        if (LeftHandPosition.y < 0.1f && targetLeftPos.y > 0.5f)
+        {
+            Debug.LogWarning($"왼손 Y축 불일치! 목표: {targetLeftPos.y:F2}, 현재: {LeftHandPosition.y:F2}");
+            // 강제로 Y축 동기화
+            LeftHandPosition = new Vector3(LeftHandPosition.x, targetLeftPos.y, LeftHandPosition.z);
+        }
+
+        if (RightHandPosition.y < 0.1f && targetRightPos.y > 0.5f)
+        {
+            Debug.LogWarning($"오른손 Y축 불일치! 목표: {targetRightPos.y:F2}, 현재: {RightHandPosition.y:F2}");
+            // 강제로 Y축 동기화
+            RightHandPosition = new Vector3(RightHandPosition.x, targetRightPos.y, RightHandPosition.z);
         }
     }
 
-    /// <summary>
-    /// 테스트 모드 손 조작 (키보드)
-    /// </summary>
     void UpdateTestModeHands()
     {
-        // 왼손 위치 조작 (WASD)
+        // 테스트 모드 손 조작
         Vector3 leftMove = Vector3.zero;
         if (Input.GetKey(leftHandUpKey)) leftMove += Vector3.up;
         if (Input.GetKey(leftHandDownKey)) leftMove += Vector3.down;
@@ -182,85 +317,48 @@ public class HandController : MonoBehaviour
         if (Input.GetKey(leftHandRightKey)) leftMove += Vector3.right;
 
         testLeftHandPos += leftMove * handMoveSpeed * Time.deltaTime;
-        LeftHandPosition = testLeftHandPos;
+        testRightHandPos = testLeftHandPos + Vector3.right * 0.6f;
 
-        // 오른손은 왼손 옆에 고정 (거리 유지)
-        testRightHandPos = testLeftHandPos + Vector3.right * 0.6f; // 더 멀리 배치
-        RightHandPosition = testRightHandPos;
+        targetLeftPos = testLeftHandPos;
+        targetRightPos = testRightHandPos;
 
-        // 테스트 타격 (스페이스바) - 개선된 버전
+        // 테스트 타격
         if (Input.GetKeyDown(hammerStrikeKey))
         {
-            // 타격 시작
-            testModeStrike = true;
-            RightHandGrabStrength = 1.0f; // 최대 잡기 강도
-            RightHandVelocity = Vector3.down * 3f; // 아래로 빠른 움직임 (더 빠르게)
-            Debug.Log("테스트 타격 시작!");
+            RightHandGrabStrength = 1.0f;
+            RightHandVelocity = Vector3.down * 0.5f;
         }
         else if (Input.GetKeyUp(hammerStrikeKey))
         {
-            // 타격 끝
-            RightHandGrabStrength = 0f;
-            RightHandVelocity = Vector3.zero;
-            testModeStrike = false;
-            Debug.Log("테스트 타격 끝!");
-        }
-        else if (testModeStrike)
-        {
-            // 타격 중에는 계속 강한 값 유지
-            RightHandGrabStrength = 1.0f;
-            RightHandVelocity = Vector3.down * 3f;
-        }
-        else
-        {
-            // 평상시
             RightHandGrabStrength = 0f;
             RightHandVelocity = Vector3.zero;
         }
     }
 
-    /// <summary>
-    /// 망치 타격 감지 (기획서의 핸들 로직) - 개선된 버전
-    /// </summary>
     void DetectHammerStrike()
     {
         IsStrikeDetected = false;
 
-        // 타격 조건: 잡기 강도가 높고 + 빠른 움직임
         bool isGripping = RightHandGrabStrength > strikeDetectionThreshold;
-        bool hasVelocity = RightHandVelocity.magnitude > 1.0f;
-
-        // 타격 거리 확인 (끌과 망치가 가까이 있어야 함)
+        bool hasVelocity = RightHandVelocity.magnitude > velocityThreshold;
         float distance = Vector3.Distance(LeftHandPosition, RightHandPosition);
         bool isInRange = distance <= maxStrikeDistance;
 
-        // 타격 감지: 이전엔 안 쥐고 있다가 지금 쥐기 시작 + 조건 만족
         if (!wasGripping && isGripping && hasVelocity && isInRange)
         {
             IsStrikeDetected = true;
 
-            // 타격 방향 계산 (망치에서 끌로)
-            Vector3 strikeDirection = (LeftHandPosition - RightHandPosition).normalized;
+            Vector3 strikePosition = GetChiselTargetPoint();
+            Vector3 strikeDirection = (strikePosition - RightHandPosition).normalized;
 
-            // 타격 이벤트 발생
-            OnHammerStrike?.Invoke(LeftHandPosition, strikeDirection, RightHandGrabStrength);
+            OnHammerStrike?.Invoke(strikePosition, strikeDirection, RightHandGrabStrength);
 
-            Debug.Log($"망치 타격 감지! 위치: {LeftHandPosition}, 힘: {RightHandGrabStrength:F2}");
-            Debug.Log($"조건 확인 - 잡기: {isGripping}, 속도: {hasVelocity}({RightHandVelocity.magnitude:F2}), 거리: {isInRange}({distance:F2})");
-        }
-
-        // 디버그: 조건들 상세 출력
-        if (Input.GetKey(hammerStrikeKey))
-        {
-            Debug.Log($"타격 시도 중 - 잡기강도: {RightHandGrabStrength:F2}, 속도: {RightHandVelocity.magnitude:F2}, 거리: {distance:F2}, wasGripping: {wasGripping}");
+            Debug.Log($"타격 감지! 위치: {strikePosition:F2}");
         }
 
         wasGripping = isGripping;
     }
 
-    /// <summary>
-    /// 손 시각적 표현 업데이트
-    /// </summary>
     void UpdateHandVisuals()
     {
         if (leftHandVisual != null)
@@ -274,18 +372,13 @@ public class HandController : MonoBehaviour
             rightHandVisual.position = RightHandPosition;
             rightHandVisual.rotation = RightHandRotation;
 
-            // 잡기 강도에 따른 시각적 피드백
             float scale = 1f + RightHandGrabStrength * 0.2f;
             rightHandVisual.localScale = Vector3.one * scale;
         }
     }
 
-    /// <summary>
-    /// 현재 끌이 가리키는 채굴 지점 계산
-    /// </summary>
     public Vector3 GetChiselTargetPoint()
     {
-        // 왼손(끌)에서 앞방향으로 레이캐스트
         Vector3 chiselForward = LeftHandRotation * Vector3.forward;
         Ray chiselRay = new Ray(LeftHandPosition, chiselForward);
 
@@ -295,66 +388,25 @@ public class HandController : MonoBehaviour
             return hit.point;
         }
 
-        // 히트가 없으면 왼손 앞방향 기본 지점
         return LeftHandPosition + chiselForward * 0.5f;
     }
 
-    [ContextMenu("현재 립모션 상태 확인")]
-    public void DebugLeapMotionStatus()
+    void PrintDebugInfo(bool leapDataReceived)
     {
-        if (leapController == null)
+        string status = useLeapMotion ?
+            (leapDataReceived ? "립모션 활성" : "립모션 대기중") :
+            "테스트 모드";
+
+        Debug.Log($"[HandController] 상태: {status}");
+        Debug.Log($"왼손: {LeftHandPosition:F2}, 오른손: {RightHandPosition:F2}");
+        Debug.Log($"그립: {RightHandGrabStrength:F2}, 속도: {RightHandVelocity.magnitude:F2}");
+
+        if (leapController != null)
         {
-            Debug.Log("립모션 컨트롤러가 null입니다.");
-            return;
-        }
-
-        Frame frame = leapController.Frame();
-        Debug.Log($"감지된 손 개수: {frame.Hands.Count}");
-
-        if (frame.Hands.Count > 0)
-        {
-            Hand hand = frame.Hands[0];
-            Vector3 rawPos = new Vector3(hand.PalmPosition.x, hand.PalmPosition.y, hand.PalmPosition.z);
-            Vector3 convertedPos = new Vector3(
-                hand.PalmPosition.x * leapMotionScale,
-                hand.PalmPosition.y * leapMotionScale,
-                (invertZ ? -hand.PalmPosition.z : hand.PalmPosition.z) * leapMotionScale
-            ) + leapMotionOffset;
-
-            Debug.Log($"원본 립모션 위치: {rawPos}");
-            Debug.Log($"변환된 Unity 위치: {convertedPos}");
+            Debug.Log($"립모션 연결: {leapController.IsConnected}, 서비스: {leapController.IsServiceConnected}");
         }
     }
 
-    [ContextMenu("타격 조건 상세 확인")]
-    public void DebugStrikeConditions()
-    {
-        bool isGripping = RightHandGrabStrength > strikeDetectionThreshold;
-        bool hasVelocity = RightHandVelocity.magnitude > 1.0f;
-        float distance = Vector3.Distance(LeftHandPosition, RightHandPosition);
-        bool isInRange = distance <= maxStrikeDistance;
-
-        Debug.Log("=== 타격 조건 상세 확인 ===");
-        Debug.Log($"잡기 강도: {RightHandGrabStrength:F2} (임계값: {strikeDetectionThreshold}) → {(isGripping ? "OK" : "FAIL")}");
-        Debug.Log($"손 속도: {RightHandVelocity.magnitude:F2} (최소: 1.0) → {(hasVelocity ? "OK" : "FAIL")}");
-        Debug.Log($"손 거리: {distance:F2} (최대: {maxStrikeDistance}) → {(isInRange ? "OK" : "FAIL")}");
-        Debug.Log($"이전 잡기 상태: {wasGripping} (false여야 함)");
-        Debug.Log($"최종 타격 가능: {(!wasGripping && isGripping && hasVelocity && isInRange)}");
-        Debug.Log("===========================");
-    }
-
-    [ContextMenu("손 상태 출력")]
-    public void PrintHandStatus()
-    {
-        Debug.Log("=== 손 상태 ===");
-        Debug.Log($"립모션 사용: {useLeapMotion}");
-        Debug.Log($"왼손 (끌): {LeftHandPosition}");
-        Debug.Log($"오른손 (망치): {RightHandPosition}");
-        Debug.Log($"잡기 강도: {RightHandGrabStrength:F2}");
-        Debug.Log($"손 속도: {RightHandVelocity.magnitude:F2}");
-        Debug.Log($"타격 범위 내: {Vector3.Distance(LeftHandPosition, RightHandPosition) <= maxStrikeDistance}");
-        Debug.Log("===============");
-    }
     void OnDrawGizmos()
     {
         if (!Application.isPlaying) return;
@@ -363,22 +415,17 @@ public class HandController : MonoBehaviour
         Gizmos.color = Color.blue;
         Gizmos.DrawWireSphere(LeftHandPosition, 0.05f);
 
-        // 오른손 (망치) - 빨간색  
+        // 오른손 (망치) - 빨간색
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(RightHandPosition, 0.05f);
 
         // 타격 범위 - 노란색
-        Gizmos.color = Color.yellow;
+        Gizmos.color = new Color(1f, 1f, 0f, 0.3f);
         Gizmos.DrawWireSphere(LeftHandPosition, maxStrikeDistance);
 
-        // 끌이 가리키는 방향 - 초록색
+        // 끌 방향 - 초록색
         Gizmos.color = Color.green;
         Vector3 chiselForward = LeftHandRotation * Vector3.forward;
         Gizmos.DrawRay(LeftHandPosition, chiselForward * 0.5f);
-
-        // 채굴 타격 지점 - 자홍색
-        Gizmos.color = Color.magenta;
-        Vector3 targetPoint = GetChiselTargetPoint();
-        Gizmos.DrawWireSphere(targetPoint, 0.03f);
     }
 }

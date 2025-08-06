@@ -1,5 +1,6 @@
 ﻿using LibreFracture;
 using UnityEngine;
+using System.Collections.Generic;
 
 /// <summary>
 /// 광물 블록 구조 및 기본 채굴 로직 처리 (Test.cs 간소화 버전)
@@ -52,7 +53,6 @@ public class MineralBlock : MonoBehaviour
 
     void FindSystemReferences()
     {
-        // 로컬 컴포넌트들
         chunkGraphManager = GetComponent<ChunkGraphManager>();
         gemProtectionSystem = GetComponent<GemProtectionSystem>();
         chunkCounter = GetComponent<ChunkCounter>();
@@ -68,7 +68,6 @@ public class MineralBlock : MonoBehaviour
             audioSource = gameObject.AddComponent<AudioSource>();
         }
 
-        // 전역 매니저들
         gameManager = FindFirstObjectByType<GameManager>();
         handController = FindFirstObjectByType<HandController>();
 
@@ -85,13 +84,11 @@ public class MineralBlock : MonoBehaviour
 
     void SubscribeToEvents()
     {
-        // ChunkCounter 이벤트를 GameManager로 전달
         if (chunkCounter != null && gameManager != null)
         {
             chunkCounter.OnChunkCountChanged += gameManager.OnMineralProgressChanged;
         }
 
-        // HandController 망치 타격 이벤트 구독
         if (handController != null)
         {
             handController.OnHammerStrike += OnHammerStrike;
@@ -100,22 +97,14 @@ public class MineralBlock : MonoBehaviour
 
     void SetupInitialSettings()
     {
-        // 모든 조각들 캐시
         RefreshChunkCache();
-
-        // 스테이지별 설정 적용
         ApplyStageSettings();
     }
 
-    /// <summary>
-    /// 스테이지별 설정을 실제 시스템에 적용 (StageManager에서 호출 가능)
-    /// </summary>
     public void ApplyStageSettings()
     {
-        // 채굴 강도를 경도에 따라 조정
         miningForceIntensity = miningForceIntensity * hardness;
 
-        // 조각 연결 강도를 경도에 따라 조정
         if (chunkGraphManager != null)
         {
             chunkGraphManager.jointBreakForce = chunkGraphManager.jointBreakForce * hardness;
@@ -126,7 +115,7 @@ public class MineralBlock : MonoBehaviour
 
     void RefreshChunkCache()
     {
-        var validChunks = new System.Collections.Generic.List<ChunkNode>();
+        var validChunks = new List<ChunkNode>();
 
         ChunkNode[] foundChunks = GetComponentsInChildren<ChunkNode>();
         foreach (ChunkNode chunk in foundChunks)
@@ -142,10 +131,8 @@ public class MineralBlock : MonoBehaviour
 
     void Update()
     {
-        // 게임이 시작되지 않았으면 입력 무시
         if (gameManager == null || !gameManager.IsGameStarted) return;
 
-        // 마우스 클릭 처리
         if (Input.GetMouseButtonDown(0))
         {
             HandleMouseClick();
@@ -159,7 +146,6 @@ public class MineralBlock : MonoBehaviour
 
         if (Physics.Raycast(ray, out hit, Mathf.Infinity, chunkLayer))
         {
-            // 클릭된 조각이 이 오브젝트의 일부인지 확인
             if (hit.collider.transform.IsChildOf(transform))
             {
                 MineAtPoint(hit.point, hit.normal);
@@ -167,48 +153,35 @@ public class MineralBlock : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// HandController에서 발생하는 망치 타격 이벤트 처리
-    /// </summary>
     public void OnHammerStrike(Vector3 position, Vector3 direction, float force)
     {
         Debug.Log($"망치 타격 감지! 위치: {position}, 힘: {force:F2}");
 
-        // 게임이 시작되지 않았으면 무시
         if (gameManager == null || !gameManager.IsGameStarted)
         {
             Debug.Log("게임이 아직 시작되지 않았습니다.");
             return;
         }
 
-        // 채굴 실행
         Vector3 surfaceNormal = -direction;
         MineAtPoint(position, surfaceNormal);
     }
 
-    /// <summary>
-    /// 지정된 위치에서 채굴 실행
-    /// </summary>
     public void MineAtPoint(Vector3 miningPoint, Vector3 surfaceNormal)
     {
-        // 1. 채굴 전에 보석 보호 시스템에 충격 전달
         if (gemProtectionSystem != null)
         {
-            // 경도에 따라 충격 강도 조정
             float adjustedForce = miningForceIntensity * hardness;
             gemProtectionSystem.CheckMiningImpactOnGems(miningPoint, adjustedForce);
         }
 
-        // 2. 채굴 효과 생성
         CreateMiningEffect(miningPoint, surfaceNormal);
 
-        // 3. 채굴 사운드 재생
         if (miningSound != null && audioSource != null)
         {
             audioSource.PlayOneShot(miningSound);
         }
 
-        // 4. 활성화되고 안전한 조각들만 찾기
         var activeChunks = System.Array.FindAll(allChunks, chunk =>
             chunk != null &&
             chunk.gameObject != null &&
@@ -222,7 +195,6 @@ public class MineralBlock : MonoBehaviour
             return;
         }
 
-        // 5. 채굴 지점에 가까운 조각들을 거리순으로 정렬
         System.Array.Sort(activeChunks, (a, b) =>
         {
             float distA = Vector3.Distance(a.transform.position, miningPoint);
@@ -232,14 +204,11 @@ public class MineralBlock : MonoBehaviour
 
         int chunksRemoved = 0;
 
-        // 6. 가까운 조각부터 차례로 제거
         foreach (ChunkNode chunk in activeChunks)
         {
             if (chunksRemoved >= chunksPerClick) break;
 
             float distance = Vector3.Distance(chunk.transform.position, miningPoint);
-
-            // 채굴 범위 내에 있는 조각들만 처리
             if (distance <= miningRadius)
             {
                 RemoveChunkGently(chunk, miningPoint, surfaceNormal);
@@ -252,13 +221,9 @@ public class MineralBlock : MonoBehaviour
     {
         if (chunk == null || chunk.gameObject == null) return;
 
-        // 간단하게 연결만 끊기
         BreakChunkConnections(chunk);
-
-        // 부드러운 물리 힘 적용 (경도에 따라 조정)
         ApplyGentleForce(chunk, surfaceNormal);
 
-        // 조각 떨어지는 소리
         if (chunkFallSounds != null && chunkFallSounds.Length > 0)
         {
             StartCoroutine(PlayDelayedFallSound(Random.Range(0.2f, 0.8f)));
@@ -269,7 +234,6 @@ public class MineralBlock : MonoBehaviour
     {
         if (chunk == null) return;
 
-        // 모든 Joint 제거
         Joint[] joints = chunk.GetComponents<Joint>();
         foreach (Joint joint in joints)
         {
@@ -293,7 +257,6 @@ public class MineralBlock : MonoBehaviour
         Vector3 forceDirection = (chunk.transform.position - transform.position).normalized;
         forceDirection.y = Mathf.Max(forceDirection.y, 0.1f);
 
-        // 경도에 따라 힘 조정
         float adjustedForce = gentleForce * hardness;
         rb.AddForce(forceDirection * adjustedForce, ForceMode.Impulse);
         rb.AddTorque(Random.insideUnitSphere * adjustedForce * 0.2f, ForceMode.Impulse);
@@ -301,7 +264,6 @@ public class MineralBlock : MonoBehaviour
 
     void CreateMiningEffect(Vector3 position, Vector3 normal)
     {
-        // 돌가루 효과
         for (int i = 0; i < 3; i++)
         {
             GameObject dust = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -318,7 +280,6 @@ public class MineralBlock : MonoBehaviour
             Destroy(dust, 1.5f);
         }
 
-        // 돌조각 효과
         for (int i = 0; i < 2; i++)
         {
             GameObject chip = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -350,7 +311,6 @@ public class MineralBlock : MonoBehaviour
 
     void OnDestroy()
     {
-        // 이벤트 구독 해제
         if (chunkCounter != null && gameManager != null)
         {
             chunkCounter.OnChunkCountChanged -= gameManager.OnMineralProgressChanged;
