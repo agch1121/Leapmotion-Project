@@ -18,14 +18,14 @@ public class ForceCalculator : MonoBehaviour
     public float customGripMultiplier = 1.2f;
 
     [Header("속도 정규화 설정")]
-    public float maxVelocityThreshold = 3f;
-    public float minVelocityThreshold = 0.1f;
+    public float maxVelocityThreshold = 2f;
+    public float minVelocityThreshold = 0.03f;
 
     [Header("힘 단계 구분")]
     [Range(0f, 1f)]
-    public float weakForceThreshold = 0.55f; // 약함 상한선 (55%)
+    public float weakForceThreshold = 0.3f; // 약함 상한선 (55%)
     [Range(0f, 1f)]
-    public float strongForceThreshold = 0.85f; // 강함 하한선 (85%)
+    public float strongForceThreshold = 0.7f; // 강함 하한선 (85%)
 
     [Header("보석 보호 시스템 연동")]
     public float forceMultiplierForGems = 30f;
@@ -142,6 +142,7 @@ public class ForceCalculator : MonoBehaviour
                (maxVelocityThreshold - minVelocityThreshold);
     }
 
+
     void UpdateForceLevel()
     {
         if (CurrentForce <= weakForceThreshold)
@@ -220,11 +221,11 @@ public class ForceCalculator : MonoBehaviour
         switch (CurrentForceLevel)
         {
             case ForceLevel.Weak:
-                return "안전한 채굴";
+                return "부드러운 채굴 (0-30%)";
             case ForceLevel.Medium:
-                return "주의 필요";
+                return "적당한 채굴 (30-70%)";
             case ForceLevel.Strong:
-                return "보석 손상 위험!";
+                return "강력한 채굴 (70-100%)";
             default:
                 return "알 수 없음";
         }

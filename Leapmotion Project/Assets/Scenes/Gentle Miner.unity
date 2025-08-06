@@ -11572,6 +11572,10 @@ PrefabInstance:
       propertyPath: leapMotionOffset.y
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 4095692135280079469, guid: a62800902f317f14abadb0d43bfaca8f, type: 3}
+      propertyPath: strikeDetectionThreshold
+      value: 0.7
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

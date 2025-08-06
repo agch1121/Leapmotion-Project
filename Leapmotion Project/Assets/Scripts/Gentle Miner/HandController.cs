@@ -14,10 +14,10 @@ public class HandController : MonoBehaviour
     public bool useCustomGrabStrength = true;
     private GripCalculator gripCalculator;
 
-    [Header("타격 동작 검증")]
-    public float maxVelocityForStrike = 2.0f; // 타격 속도 계산용 최대값
-    public float minDownwardVelocity = 0.2f; // 최소 아래쪽 속도
-    public float minTotalVelocity = 0.3f; // 최소 전체 속도
+    [Header("채굴 동작 검출")]
+    public float maxVelocityForStrike = 2.0f; // 타격 속도 계산용 최댓값
+    public float minDownwardVelocity = 0.05f; // 최소 아래쪽 속도 (기존 0.2f에서 적당히 완화)
+    public float minTotalVelocity = 0.1f; // 최소 전체 속도 (기존 0.3f에서 적당히 완화)
 
     [Header("테스트 모드")]
     public bool enableTestMode = true;
@@ -39,9 +39,9 @@ public class HandController : MonoBehaviour
     public float smoothSpeed = 10f;
 
     [Header("채굴 설정")]
-    public float strikeDetectionThreshold = 0.5f;
+    public float strikeDetectionThreshold = 0.3f;
     public float maxStrikeDistance = 2.0f;
-    public float velocityThreshold = 0.1f;
+    public float velocityThreshold = 0.03f;
 
     // 립모션 컨트롤러
     private Controller leapController;
@@ -359,62 +359,145 @@ public class HandController : MonoBehaviour
             RightHandVelocity = Vector3.zero;
         }
     }
-
+    public bool enableDetailedDebug = true;
+    public bool forceEnableStrike = false; // 강제 채굴 활성화 (테스트용)
     void DetectHammerStrike()
     {
         IsStrikeDetected = false;
 
+        // 모든 조건을 개별적으로 체크하고 로그 출력
         bool isGripping = RightHandGrabStrength > strikeDetectionThreshold;
         bool hasVelocity = RightHandVelocity.magnitude > velocityThreshold;
         float distance = Vector3.Distance(LeftHandPosition, RightHandPosition);
         bool isInRange = distance <= maxStrikeDistance;
 
-        // 새로 추가된 조건들
         bool hasDownwardMotion = CheckDownward();
         bool hasSwingMotion = CheckSwing();
         bool meetsMinimumForce = CheckMinForce();
 
-        // 강화된 타격 감지 조건
-        if (!wasGripping && isGripping && hasVelocity && isInRange &&
-            hasDownwardMotion && hasSwingMotion && meetsMinimumForce)
+        // 상세한 디버그 로그
+        if (enableDetailedDebug && isGripping)
+        {
+            Debug.Log($"=== 채굴 조건 체크 ===");
+            Debug.Log($"쥐는 강도: {RightHandGrabStrength:F3} > {strikeDetectionThreshold} = {isGripping}");
+            Debug.Log($"속도: {RightHandVelocity.magnitude:F3} > {velocityThreshold} = {hasVelocity}");
+            Debug.Log($"거리: {distance:F2} <= {maxStrikeDistance} = {isInRange}");
+            Debug.Log($"아래쪽 움직임: {-RightHandVelocity.y:F3} > {minDownwardVelocity} = {hasDownwardMotion}");
+            Debug.Log($"휘두르기: {hasSwingMotion}");
+            Debug.Log($"최소 힘: {CalcStrikeForce():F3} > 0.03 = {meetsMinimumForce}");
+            Debug.Log($"이전 쥐기 상태: {wasGripping}");
+        }
+
+        // 강제 모드 또는 기존 조건
+        bool shouldStrike = false;
+
+        if (forceEnableStrike)
+        {
+            // 강제 모드: 쥐기만 하면 채굴
+            shouldStrike = !wasGripping && isGripping;
+            if (enableDetailedDebug && shouldStrike)
+            {
+                Debug.Log("강제 모드로 채굴 실행!");
+            }
+        }
+        else
+        {
+            // 매우 완화된 조건들
+            bool basicCondition = !wasGripping && isGripping && isInRange;
+
+            // 속도 조건을 더욱 완화 - 하나라도 만족하면 OK
+            bool anyMotion = hasVelocity || hasDownwardMotion || hasSwingMotion;
+
+            // 힘 조건도 더 완화
+            bool hasAnyForce = RightHandGrabStrength > 0.1f; // 매우 낮은 기준
+
+            shouldStrike = basicCondition && (anyMotion || hasAnyForce);
+
+            if (enableDetailedDebug && basicCondition)
+            {
+                Debug.Log($"기본 조건 만족, 추가 조건: 움직임={anyMotion}, 힘={hasAnyForce}");
+            }
+        }
+
+        if (shouldStrike)
         {
             IsStrikeDetected = true;
-
-            Vector3 strikePosition = GetChiselTargetPoint();
-            Vector3 strikeDirection = (strikePosition - RightHandPosition).normalized;
-
-            // 타격 힘 강도 계산 (속도 + 쥐는 강도)
-            float strikeForce = CalcStrikeForce();
-
-            OnHammerStrike?.Invoke(strikePosition, strikeDirection, strikeForce);
-
-            Debug.Log($"망치 타격 감지! 위치: {strikePosition:F2}, 힘: {strikeForce:F2}");
+            ExecuteStrike();
         }
 
         wasGripping = isGripping;
     }
 
+    void ExecuteStrike()
+    {
+        Vector3 strikePosition = GetChiselTargetPoint();
+        Vector3 strikeDirection = (strikePosition - RightHandPosition).normalized;
+        float strikeForce = CalcStrikeForce();
+
+        // 최소 힘이라도 보장
+        if (strikeForce < 0.1f)
+        {
+            strikeForce = 0.1f;
+        }
+
+        Debug.Log($"채굴 실행! 힘: {strikeForce:F3}, 위치: {strikePosition}");
+
+        OnHammerStrike?.Invoke(strikePosition, strikeDirection, strikeForce);
+    }
+
     bool CheckDownward()
     {
         float downwardVelocity = -RightHandVelocity.y;
-        return downwardVelocity > minDownwardVelocity;
+        bool result = downwardVelocity > 0.02f; // 매우 작은 값
+
+        if (enableDetailedDebug)
+        {
+            Debug.Log($"아래쪽 속도: {downwardVelocity:F3} > 0.02 = {result}");
+        }
+
+        return result;
     }
 
     bool CheckSwing()
     {
         float totalSpeed = RightHandVelocity.magnitude;
+
+        if (totalSpeed < minTotalVelocity) // 0.1f
+        {
+            if (enableDetailedDebug)
+            {
+                Debug.Log($"총 속도 부족: {totalSpeed:F3} < {minTotalVelocity}");
+            }
+            return false;
+        }
+
+        // 아래쪽 움직임 비율 계산
         float downwardSpeed = Mathf.Abs(RightHandVelocity.y);
+        float downwardRatio = totalSpeed > 0.01f ? downwardSpeed / totalSpeed : 0f;
 
-        if (totalSpeed < minTotalVelocity) return false;
+        // 아래비율 조건을 5%로 대폭 완화 (기존 20%에서)
+        bool result = downwardRatio > 0.05f; // 기존 0.2f에서 0.05f로 완화
 
-        float downwardRatio = downwardSpeed / totalSpeed;
-        return downwardRatio > 0.3f;
+        if (enableDetailedDebug)
+        {
+            Debug.Log($"휘두르기 체크: 총속도={totalSpeed:F3}, 아래비율={downwardRatio:F3} > 0.05 = {result}");
+        }
+
+        return result;
     }
+
 
     bool CheckMinForce()
     {
         float calculatedForce = CalcStrikeForce();
-        return calculatedForce > 0.1f;
+        bool result = calculatedForce > 0.01f; // 매우 낮은 기준
+
+        if (enableDetailedDebug)
+        {
+            Debug.Log($"계산된 힘: {calculatedForce:F3} > 0.01 = {result}");
+        }
+
+        return result;
     }
 
     float CalcStrikeForce()
