@@ -156,6 +156,13 @@ public class ToolSystem : MonoBehaviour
         chiselGuideLine.useWorldSpace = true;
     }
 
+    void HideToolInstances()
+    {
+        if (chiselInstance != null) chiselInstance.SetActive(false);
+        if (hammerInstance != null) hammerInstance.SetActive(false);
+        if (previewSphere != null) previewSphere.SetActive(false);
+        return;
+    }
     void SetupPreviewSphere()
     {
         if (previewSphere == null)
@@ -188,6 +195,14 @@ public class ToolSystem : MonoBehaviour
         UpdateChiselTarget();
         UpdateVisualGuides();
         HandleSafetySystem();
+        if (!GameManager.Instance.IsGameStarted)
+            HideToolInstances();
+        else
+        {
+            if (chiselInstance != null) chiselInstance.SetActive(true);
+            if (hammerInstance != null) hammerInstance.SetActive(true);
+            if (previewSphere != null) previewSphere.SetActive(true);
+        }
     }
 
     void UpdateToolPositions()
@@ -375,8 +390,6 @@ public class ToolSystem : MonoBehaviour
             float hammerDistance = Vector3.Distance(hammerInstance.transform.position, centerPos);
         }
     }
-
-    // 나머지 메서드들은 동일...
 
     void OnHammerStrike(Vector3 strikePosition, Vector3 strikeDirection, float gripStrength)
     {

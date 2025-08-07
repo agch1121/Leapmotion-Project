@@ -7,6 +7,13 @@ using System.Collections;
 /// </summary>
 public class GameManager : MonoBehaviour
 {
+    public static GameManager Instance { get; private set; }
+
+    private void Awake()
+    {
+        Instance = this;
+    }
+
     [Header("게임 설정")]
     [SerializeField] public int totalStages = 3;
     public float successThreshold = 0.7f; // 70% 성공 기준
@@ -479,6 +486,18 @@ public class GameManager : MonoBehaviour
             {
                 Debug.Log("100% 완료 강제 테스트 실행");
                 OnMiningComplete(1.0f);
+            }
+        }
+
+        if (Input.GetKeyDown(KeyCode.F)) // F키: 실패 강제 테스트
+        {
+            if (gameInitialized && !gameSucceeded && !gameCompleted)
+            {
+                Debug.Log("게임 실패 강제 테스트 실행");
+                gemRevealSystem.StartGemDestruction();
+                ChangeGameState(GameState.Failed);
+                currentScore = CalculateTimeoutScore();
+                OnScoreChanged?.Invoke(currentScore);
             }
         }
     }

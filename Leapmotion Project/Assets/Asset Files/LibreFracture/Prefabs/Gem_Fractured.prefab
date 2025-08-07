@@ -257,11 +257,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5c640b0b22ef4944a92621c13b125154, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  totalMass: 0
-  jointBreakForce: 0
-  anchored: 0
+  totalMass: 100
+  jointBreakForce: 100
+  anchored: 1
   freezeConnectedChunks: 0
-  startAsleep: 0
+  startAsleep: 1
 --- !u!64 &7863067537265398659
 MeshCollider:
   m_ObjectHideFlags: 0

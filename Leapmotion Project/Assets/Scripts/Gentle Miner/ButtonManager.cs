@@ -36,16 +36,13 @@ public class ButtonManager : MonoBehaviour
 
     public void GameRestart()
     {
-        // 현재 씬을 다시 로드하여 게임을 재시작
-        // UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
-        // 현재 스테이지를 다시 시작하는 로직 구현
-
+        GameManager.Instance.RestartCurrentStage();
         Debug.Log("게임 재시작");
     }
 
     public void NextStage()
     {
-
+        GameManager.Instance.ProceedToNextStage();
     }
 
     public GameObject GetCurrentMineral()
