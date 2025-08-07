@@ -313,7 +313,7 @@ public class UIManager : MonoBehaviour
         if (sliderRect != null && successRect != null)
         {
             float sliderWidth = sliderRect.rect.width;
-            float successPosition = sliderWidth * 0.7f; // 70% 위치
+            float successPosition = sliderWidth * 0.9f; // 70% 위치
 
             successRect.anchoredPosition = new Vector2(successPosition, successRect.anchoredPosition.y);
         }
