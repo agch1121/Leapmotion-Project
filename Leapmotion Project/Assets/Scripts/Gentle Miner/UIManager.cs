@@ -39,13 +39,13 @@ public class UIManager : MonoBehaviour
     public Color warningTimeColor = Color.yellow;  // 30초 남았을 때
     public Color dangerTimeColor = Color.red;      // 10초 남았을 때
 
-
-    [Header("결과 패널 UI (추후 생성)")]
+    [Header("결과 패널 UI")]
     public TextMeshProUGUI resultTitleText;
     public TextMeshProUGUI resultMessageText;
-    public Button quitButton;
-    public Button retryButton;
-    public Button nextButton;
+    public GameObject quitButton;
+    public GameObject retryButton;
+    public GameObject nextButton;
+    public TextMeshProUGUI nextButtonText;
 
     // 시스템 참조
     private GameManager gameManager;
@@ -78,9 +78,6 @@ public class UIManager : MonoBehaviour
         // 이벤트 구독
         SubscribeToEvents();
 
-        // 버튼 이벤트 설정 (결과 패널이 있는 경우에만)
-        SetupButtonEvents();
-
         // 초기 UI 상태 설정
         SetInitialUIState();
 
@@ -98,25 +95,13 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    void SetupButtonEvents()
-    {
-        if (quitButton != null)
-            quitButton.onClick.AddListener(QuitGame);
-
-        if (retryButton != null)
-            retryButton.onClick.AddListener(() => gameManager?.RestartCurrentStage());
-
-        if (nextButton != null)
-            nextButton.onClick.AddListener(() => gameManager?.ProceedToNextStage());
-    }
-
     void SetInitialUIState()
     {
         // 게임플레이 패널 활성화
         if (gameplayPanel != null)
             gameplayPanel.SetActive(true);
 
-        // 결과 패널 비활성화 (있는 경우에만)
+        // 결과 패널 비활성화
         if (resultPanel != null)
             resultPanel.SetActive(false);
 
@@ -157,7 +142,7 @@ public class UIManager : MonoBehaviour
 
     void UpdateTimeDisplay()
     {
-        if (gameManager == null) return;
+        if (gameManager == null || isGameEnded) return;
 
         // 게임 시작 전에는 제한시간 표시
         if (!gameManager.IsGameStarted)
@@ -175,7 +160,7 @@ public class UIManager : MonoBehaviour
         UpdateTimeColor(remainingTime);
 
         // 시간 종료 체크
-        if (remainingTime <= 0f && !isGameEnded)
+        if (remainingTime <= 0f &&!isGameEnded)
         {
             OnTimeUp();
         }
@@ -352,6 +337,7 @@ public class UIManager : MonoBehaviour
             case GameManager.GameState.NotStarted:
             case GameManager.GameState.Initializing:
                 ShowGameplayUI();
+                isGameEnded = false;
                 SetupTimerForCurrentStage();
                 UpdateTimeUI("게임 준비 중...");
                 break;
@@ -365,6 +351,7 @@ public class UIManager : MonoBehaviour
                 break;
 
             case GameManager.GameState.Success:
+                UpdateTimeUI("채굴 성공!");
                 ShowResultMessage("채굴 성공!", $"70% 이상 채굴 완료!\n남은 시간: {Mathf.FloorToInt(remainingTime)}초");
                 isGameEnded = true;
                 break;
@@ -378,6 +365,9 @@ public class UIManager : MonoBehaviour
                 string failMessage = remainingTime <= 0 ?
                     "시간 초과로 실패했습니다" :
                     "보석이 파괴되었습니다";
+                UpdateTimeUI("채굴 실패..");
+                nextButton.SetActive(false);
+                nextButtonText.text = "";
                 ShowResultMessage("채굴 실패", failMessage);
                 isGameEnded = true;
                 break;
@@ -397,7 +387,11 @@ public class UIManager : MonoBehaviour
             gameplayPanel.SetActive(true);
 
         if (resultPanel != null)
+        {
             resultPanel.SetActive(false);
+            nextButton.SetActive(true);
+            nextButtonText.text = "다음 스테이지";
+        }
     }
 
     /// <summary>
@@ -486,7 +480,7 @@ public class UIManager : MonoBehaviour
     /// </summary>
     public void ShowGameCompleteUI(int finalScore)
     {
-        ShowResultMessage("게임 완료!", $"모든 스테이지 클리어!\n최종 점수: {finalScore}");
+        ShowResultMessage("게임 완료!", $"스테이지 완전 클리어!\n최종 점수: {finalScore}");
         isGameEnded = true;
     }
 

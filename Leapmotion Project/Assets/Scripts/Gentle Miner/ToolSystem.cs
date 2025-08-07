@@ -1,52 +1,56 @@
 using UnityEngine;
 using LibreFracture;
 using System.Collections;
+using Unity.VisualScripting;
 
 /// <summary>
-/// ²ø(Chisel) + ¸ÁÄ¡(Hammer) »óÈ£ÀÛ¿ë ½Ã½ºÅÛ
-/// ¿µ±¸ Manager ¿ÀºêÁ§Æ®¿¡ ºÙ¾î¼­ µ¿ÀûÀ¸·Î ÇöÀç ±¤¹° ºí·Ï ÂüÁ¶
+/// ëŒ(Chisel) + ë§ì¹˜(Hammer) ìƒí˜¸ì‘ìš© ì‹œìŠ¤í…œ
+/// ì›”ë“œ ì¢Œí‘œ ê¸°ë°˜ìœ¼ë¡œ ë„êµ¬ ìœ„ì¹˜ ì—…ë°ì´íŠ¸
 /// </summary>
 public class ToolSystem : MonoBehaviour
 {
-    [Header("µµ±¸ ½Ã°¢Àû Ç¥Çö")]
+    [Header("ë„êµ¬ ì‹œê°ì  í‘œí˜„")]
     public GameObject chiselPrefab;
     public GameObject hammerPrefab;
     public LineRenderer chiselGuideLine;
 
-    [Header("Ã¤±¼ ¼³Á¤")]
+    [Header("ì† Visual ì°¸ì¡° (ì›”ë“œ ì¢Œí‘œìš©)")]
+    public Transform leftHandVisual;  // ì™¼ì† Visual Transform ì§ì ‘ ì°¸ì¡°
+    public Transform rightHandVisual; // ì˜¤ë¥¸ì† Visual Transform ì§ì ‘ ì°¸ì¡°
+
+    [Header("ì±„êµ´ ì„¤ì •")]
     public LayerMask chunkLayer = -1;
     public float miningRadius = 0.1f;
     public int chunksPerStrike = 2;
     public float chiselRayDistance = 2f;
 
-    [Header("½Ã°¢Àû °¡ÀÌµå")]
+    [Header("ì‹œê°ì  ê°€ì´ë“œ")]
     public bool showChiselPreview = true;
     public GameObject previewSphere;
     public Material safePreviewMaterial;
     public Material dangerPreviewMaterial;
 
-    [Header("Ã¤±¼ È¿°ú")]
+    [Header("ì±„êµ´ íš¨ê³¼")]
     public AudioClip miningSound;
     public AudioClip[] chunkFallSounds;
     public ParticleSystem miningParticleEffect;
 
-    [Header("¾ÈÀü ½Ã½ºÅÛ")]
+    [Header("ì•ˆì „ ì‹œìŠ¤í…œ")]
     public bool enableSafetySystem = true;
     public float maxSafeDistance = 3f;
 
-    // ½Ã½ºÅÛ ÂüÁ¶
+    // ì‹œìŠ¤í…œ ì°¸ì¡°ë“¤
     private HandController handController;
     private ForceCalculator forceCalculator;
     private AudioSource audioSource;
 
-    // µµ±¸ »óÅÂ
+    // ë„êµ¬ ìƒíƒœ
     private GameObject chiselInstance;
     private GameObject hammerInstance;
     private Vector3 currentChiselTarget;
     private bool isChiselTargetValid = false;
 
-    // Ã¤±¼ Áß »óÅÂ
-    private bool isMining = false;
+    // ì±„êµ´ ì¤‘ ìƒíƒœ
     private float lastMiningTime = 0f;
     private float miningCooldown = 0.5f;
 
@@ -57,56 +61,89 @@ public class ToolSystem : MonoBehaviour
 
     void InitializeToolSystem()
     {
-        // ½Ã½ºÅÛ ÂüÁ¶ °¡Á®¿À±â
+        // ì‹œìŠ¤í…œ ì°¸ì¡° ê°€ì ¸ì˜¤ê¸°
         handController = FindFirstObjectByType<HandController>();
         forceCalculator = FindFirstObjectByType<ForceCalculator>();
 
         if (handController == null)
         {
-            Debug.LogError("HandController¸¦ Ã£À» ¼ö ¾ø½À´Ï´Ù!");
+            Debug.LogError("HandControllerë¥¼ ì°¾ì„ ìˆ˜ ì—†ìŠµë‹ˆë‹¤!");
             return;
         }
 
-        if (forceCalculator == null)
+        // ì† Visualì´ Inspectorì—ì„œ í• ë‹¹ë˜ì§€ ì•Šì•˜ë‹¤ë©´ HandControllerì—ì„œ ê°€ì ¸ì˜¤ê¸°
+        if (leftHandVisual == null && handController.leftHandVisual != null)
         {
-            Debug.LogError("ForceCalculator¸¦ Ã£À» ¼ö ¾ø½À´Ï´Ù!");
-            return;
+            leftHandVisual = handController.leftHandVisual;
         }
 
-        // ¿Àµğ¿À ¼Ò½º ¼³Á¤
+        if (rightHandVisual == null && handController.rightHandVisual != null)
+        {
+            rightHandVisual = handController.rightHandVisual;
+        }
+
+        // ì˜¤ë””ì˜¤ ì†ŒìŠ¤ ì„¤ì •
         audioSource = GetComponent<AudioSource>();
         if (audioSource == null)
         {
             audioSource = gameObject.AddComponent<AudioSource>();
         }
 
-        // HandControllerÀÇ Å¸°İ ÀÌº¥Æ® ±¸µ¶
+        // HandControllerì˜ íƒ€ê²© ì´ë²¤íŠ¸ êµ¬ë…
         handController.OnHammerStrike += OnHammerStrike;
 
-        // µµ±¸ ÀÎ½ºÅÏ½º »ı¼º
+        // ë„êµ¬ ì¸ìŠ¤í„´ìŠ¤ ìƒì„±
         CreateToolInstances();
 
-        // ¹Ì¸®º¸±â ±¸Ã¼ ¼³Á¤
+        // ë¯¸ë¦¬ë³´ê¸° êµ¬ì²´ ì„¤ì •
         SetupPreviewSphere();
     }
 
     void CreateToolInstances()
     {
-        // ²ø ÀÎ½ºÅÏ½º »ı¼º
+        // ëŒ ì¸ìŠ¤í„´ìŠ¤ ìƒì„±
         if (chiselPrefab != null)
         {
             chiselInstance = Instantiate(chiselPrefab);
             chiselInstance.name = "Chisel_Instance";
+
+            // ë¬¼ë¦¬ ë¹„í™œì„±í™” (ì†ì— ê³ ì •ë˜ë¯€ë¡œ)
+            Rigidbody chiselRb = chiselInstance.GetComponent<Rigidbody>();
+            if (chiselRb != null)
+            {
+                chiselRb.isKinematic = true;
+            }
+
+            // Colliderë„ íŠ¸ë¦¬ê±°ë¡œ ì„¤ì •
+            Collider chiselCol = chiselInstance.GetComponent<Collider>();
+            if (chiselCol != null)
+            {
+                chiselCol.isTrigger = true;
+            }
         }
 
-        // ¸ÁÄ¡ ÀÎ½ºÅÏ½º »ı¼º
+        // ë§ì¹˜ ì¸ìŠ¤í„´ìŠ¤ ìƒì„±
         if (hammerPrefab != null)
         {
             hammerInstance = Instantiate(hammerPrefab);
             hammerInstance.name = "Hammer_Instance";
+
+            // ë¬¼ë¦¬ ë¹„í™œì„±í™” (ì†ì— ê³ ì •ë˜ë¯€ë¡œ)
+            Rigidbody hammerRb = hammerInstance.GetComponent<Rigidbody>();
+            if (hammerRb != null)
+            {
+                hammerRb.isKinematic = true;
+            }
+
+            // Colliderë„ íŠ¸ë¦¬ê±°ë¡œ ì„¤ì •
+            Collider hammerCol = hammerInstance.GetComponent<Collider>();
+            if (hammerCol != null)
+            {
+                hammerCol.isTrigger = true;
+            }
         }
 
-        // °¡ÀÌµå¶óÀÎ ¼³Á¤
+        // ê°€ì´ë“œë¼ì¸ ì„¤ì •
         if (chiselGuideLine == null)
         {
             chiselGuideLine = gameObject.AddComponent<LineRenderer>();
@@ -119,6 +156,13 @@ public class ToolSystem : MonoBehaviour
         chiselGuideLine.useWorldSpace = true;
     }
 
+    void HideToolInstances()
+    {
+        if (chiselInstance != null) chiselInstance.SetActive(false);
+        if (hammerInstance != null) hammerInstance.SetActive(false);
+        if (previewSphere != null) previewSphere.SetActive(false);
+        return;
+    }
     void SetupPreviewSphere()
     {
         if (previewSphere == null)
@@ -129,7 +173,7 @@ public class ToolSystem : MonoBehaviour
             Destroy(previewSphere.GetComponent<Collider>());
         }
 
-        // ±âº» ÀçÁú ¼³Á¤
+        // ê¸°ë³¸ ì¬ì§ˆ ì„¤ì •
         if (safePreviewMaterial == null)
         {
             safePreviewMaterial = new Material(Shader.Find("Standard"));
@@ -147,58 +191,113 @@ public class ToolSystem : MonoBehaviour
 
     void Update()
     {
-        if (handController == null) return;
-
         UpdateToolPositions();
         UpdateChiselTarget();
         UpdateVisualGuides();
         HandleSafetySystem();
+        if (!GameManager.Instance.IsGameStarted)
+            HideToolInstances();
+        else
+        {
+            if (chiselInstance != null) chiselInstance.SetActive(true);
+            if (hammerInstance != null) hammerInstance.SetActive(true);
+            if (previewSphere != null) previewSphere.SetActive(true);
+        }
     }
 
     void UpdateToolPositions()
     {
-        // ²ø À§Ä¡ ¾÷µ¥ÀÌÆ® (¿Ş¼Õ)
-        if (chiselInstance != null)
+        // ì† Visualì˜ ì›”ë“œ ì¢Œí‘œë¥¼ ì§ì ‘ ì‚¬ìš©
+        if (leftHandVisual != null)
         {
-            chiselInstance.transform.position = handController.LeftHandPosition;
-            chiselInstance.transform.rotation = handController.LeftHandRotation;
+            // ëŒ ìœ„ì¹˜ ì—…ë°ì´íŠ¸ (ì™¼ì† Visualì˜ ì›”ë“œ ì¢Œí‘œ ì‚¬ìš©)
+            if (chiselInstance != null)
+            {
+                chiselInstance.transform.position = leftHandVisual.position;
+                chiselInstance.transform.rotation = leftHandVisual.rotation;
+
+                // yì¶• ìœ„ì¹˜ ì¡°ì • (4ë°° ë†’ì´)
+                Vector3 adjustedPosition = chiselInstance.transform.position;
+                adjustedPosition.y *= 6f; // yì¶• ìœ„ì¹˜ë¥¼ 4ë°° ë†’ì´ë¡œ ì¡°ì •
+                chiselInstance.transform.position = adjustedPosition;
+            }
+        }
+        else if (handController != null)
+        {
+            // Visualì´ ì—†ìœ¼ë©´ HandController ê°’ ì‚¬ìš© (fallback)
+            if (chiselInstance != null)
+            {
+                chiselInstance.transform.position = handController.LeftHandPosition;
+                chiselInstance.transform.rotation = handController.LeftHandRotation;
+            }
         }
 
-        // ¸ÁÄ¡ À§Ä¡ ¾÷µ¥ÀÌÆ® (¿À¸¥¼Õ)
-        if (hammerInstance != null)
+        if (rightHandVisual != null)
         {
-            hammerInstance.transform.position = handController.RightHandPosition;
-            hammerInstance.transform.rotation = handController.RightHandRotation;
+            // ë§ì¹˜ ìœ„ì¹˜ ì—…ë°ì´íŠ¸ (ì˜¤ë¥¸ì† Visualì˜ ì›”ë“œ ì¢Œí‘œ ì‚¬ìš©)
+            if (hammerInstance != null)
+            {
+                hammerInstance.transform.position = rightHandVisual.position;
+                hammerInstance.transform.rotation = rightHandVisual.rotation;
 
-            // Áç °­µµ¿¡ µû¸¥ ½Ã°¢Àû ÇÇµå¹é
-            float gripScale = 1f + handController.RightHandGrabStrength * 0.1f;
-            hammerInstance.transform.localScale = Vector3.one * gripScale;
+                // yì¶• ìœ„ì¹˜ ì¡°ì • (4ë°° ë†’ì´)
+                Vector3 adjustedPosition = hammerInstance.transform.position;
+                adjustedPosition.y *= 5f; // yì¶• ìœ„ì¹˜ë¥¼ 4ë°° ë†’ì´ë¡œ ì¡°ì •
+                hammerInstance.transform.position = adjustedPosition;
+
+                // ì¡ê¸° ê°•ë„ì— ë”°ë¥¸ ì‹œê°ì  í”¼ë“œë°±
+                if (handController != null)
+                {
+                    float gripScale = 1f + handController.RightHandGrabStrength * 0.1f;
+                    hammerInstance.transform.localScale = Vector3.one * gripScale;
+                }
+            }
+        }
+        else if (handController != null)
+        {
+            // Visualì´ ì—†ìœ¼ë©´ HandController ê°’ ì‚¬ìš© (fallback)
+            if (hammerInstance != null)
+            {
+                hammerInstance.transform.position = handController.RightHandPosition;
+                hammerInstance.transform.rotation = handController.RightHandRotation;
+
+                float gripScale = 1f + handController.RightHandGrabStrength * 0.1f;
+                hammerInstance.transform.localScale = Vector3.one * gripScale;
+            }
         }
     }
 
     void UpdateChiselTarget()
     {
-        // ÇöÀç È°¼º ±¤¹° ºí·Ï Ã£±â
+        // í˜„ì¬ í™œì„± ê´‘ë¬¼ ë¸”ë¡ ì°¾ê¸°
         GameObject currentMineralBlock = FindCurrentMineralBlock();
 
         if (currentMineralBlock == null)
         {
             isChiselTargetValid = false;
-            currentChiselTarget = handController.LeftHandPosition +
-                                (handController.LeftHandRotation * Vector3.forward * 0.5f);
+
+            // ëŒì˜ ì›”ë“œ ìœ„ì¹˜ ì‚¬ìš©
+            Vector3 chiselWorldPos = chiselInstance != null ? chiselInstance.transform.position :
+                               (leftHandVisual != null ? leftHandVisual.position : Vector3.zero);
+
+            currentChiselTarget = chiselWorldPos + Vector3.forward * 0.5f;
             return;
         }
 
-        Vector3 chiselPos = handController.LeftHandPosition;
-        Vector3 chiselForward = handController.LeftHandRotation * Vector3.forward;
+        // ëŒì˜ ì‹¤ì œ ì›”ë“œ ìœ„ì¹˜ì™€ ë°©í–¥ ì‚¬ìš©
+        Vector3 chiselPos = chiselInstance != null ? chiselInstance.transform.position :
+                           (leftHandVisual != null ? leftHandVisual.position : Vector3.zero);
+
+        Vector3 chiselForward = chiselInstance != null ? chiselInstance.transform.forward :
+                               (leftHandVisual != null ? leftHandVisual.forward : Vector3.forward);
 
         Ray chiselRay = new Ray(chiselPos, chiselForward);
         RaycastHit hit;
 
-        // Ã¤±¼ ´ë»ó(±¤¹° ºí·Ï)¿¡ ·¹ÀÌÄ³½ºÆ®
+        // ì±„êµ´ ëŒ€ìƒ(ê´‘ë¬¼ ë¸”ë¡)ì— ë ˆì´ìºìŠ¤íŠ¸
         if (Physics.Raycast(chiselRay, out hit, chiselRayDistance, chunkLayer))
         {
-            // ÇöÀç È°¼º ±¤¹° ºí·ÏÀÇ ÀÚ½ÄÀÎÁö È®ÀÎ
+            // í˜„ì¬ í™œì„± ê´‘ë¬¼ ë¸”ë¡ì˜ ìì‹ì¸ì§€ í™•ì¸
             if (hit.collider.transform.IsChildOf(currentMineralBlock.transform))
             {
                 currentChiselTarget = hit.point;
@@ -218,14 +317,14 @@ public class ToolSystem : MonoBehaviour
 
     GameObject FindCurrentMineralBlock()
     {
-        // StageManager¿¡¼­ ÇöÀç ±¤¹° ºí·Ï °¡Á®¿À±â
+        // StageManagerì—ì„œ í˜„ì¬ ê´‘ë¬¼ ë¸”ë¡ ê°€ì ¸ì˜¤ê¸°
         StageManager stageManager = FindFirstObjectByType<StageManager>();
         if (stageManager != null)
         {
             return stageManager.GetCurrentMineralBlock();
         }
 
-        // ¹é¾÷: ChunkGraphManager°¡ ÀÖ´Â ¿ÀºêÁ§Æ® Ã£±â
+        // ë°±ì—…: ChunkGraphManagerê°€ ìˆëŠ” ì˜¤ë¸Œì íŠ¸ ì°¾ê¸°
         ChunkGraphManager chunkManager = FindFirstObjectByType<ChunkGraphManager>();
         if (chunkManager != null)
         {
@@ -237,19 +336,19 @@ public class ToolSystem : MonoBehaviour
 
     void UpdateVisualGuides()
     {
-        // ²ø °¡ÀÌµå¶óÀÎ ¾÷µ¥ÀÌÆ®
-        if (chiselGuideLine != null)
+        // ëŒ ê°€ì´ë“œë¼ì¸ ì—…ë°ì´íŠ¸
+        if (chiselGuideLine != null && chiselInstance != null)
         {
-            chiselGuideLine.SetPosition(0, handController.LeftHandPosition);
+            chiselGuideLine.SetPosition(0, chiselInstance.transform.position);
             chiselGuideLine.SetPosition(1, currentChiselTarget);
 
-            // À¯È¿ÇÑ Å¸°ÙÀÎÁö¿¡ µû¶ó »ö»ó º¯°æ
+            // ìœ íš¨í•œ íƒ€ê²©ì ì¸ì§€ì— ë”°ë¼ ìƒ‰ìƒ ë³€ê²½
             Color lineColor = isChiselTargetValid ? Color.green : Color.gray;
             chiselGuideLine.startColor = lineColor;
             chiselGuideLine.endColor = lineColor;
         }
 
-        // Ã¤±¼ ÁöÁ¡ ¹Ì¸®º¸±â ¾÷µ¥ÀÌÆ®
+        // ì±„êµ´ ì§€ì  ë¯¸ë¦¬ë³´ê¸° ì—…ë°ì´íŠ¸
         if (previewSphere != null && showChiselPreview)
         {
             previewSphere.SetActive(isChiselTargetValid);
@@ -258,12 +357,12 @@ public class ToolSystem : MonoBehaviour
             {
                 previewSphere.transform.position = currentChiselTarget;
 
-                // Èû ·¹º§¿¡ µû¸¥ »ö»ó º¯°æ
+                // í˜ ë ˆë²¨ì— ë”°ë¥¸ ìƒ‰ìƒ ë³€ê²½
                 bool isSafeForce = forceCalculator?.IsSafeForce() ?? true;
                 MeshRenderer renderer = previewSphere.GetComponent<MeshRenderer>();
                 renderer.material = isSafeForce ? safePreviewMaterial : dangerPreviewMaterial;
 
-                // Ã¤±¼ ¹üÀ§ ½Ã°¢È­
+                // ì±„êµ´ ë²”ìœ„ ì‹œê°í™”
                 float previewScale = miningRadius * 2f;
                 previewSphere.transform.localScale = Vector3.one * previewScale;
             }
@@ -274,40 +373,41 @@ public class ToolSystem : MonoBehaviour
     {
         if (!enableSafetySystem) return;
 
-        // ÇöÀç ±¤¹° ºí·Ï À§Ä¡ ±âÁØÀ¸·Î ¾ÈÀü °Å¸® Ã¼Å©
+        // í˜„ì¬ ê´‘ë¬¼ ë¸”ë¡ ìœ„ì¹˜ ê¸°ì¤€ìœ¼ë¡œ ì•ˆì „ ê±°ë¦¬ ì²´í¬
         GameObject currentMineralBlock = FindCurrentMineralBlock();
         if (currentMineralBlock == null) return;
 
         Vector3 centerPos = currentMineralBlock.transform.position;
 
-        if (Vector3.Distance(handController.LeftHandPosition, centerPos) > maxSafeDistance)
+        // ë„êµ¬ì˜ ì‹¤ì œ ì›”ë“œ ìœ„ì¹˜ë¡œ ê±°ë¦¬ ì²´í¬
+        if (chiselInstance != null)
         {
-            Debug.LogWarning("²øÀÌ ¾ÈÀü °Å¸®¸¦ ¹ş¾î³µ½À´Ï´Ù!");
+            float chiselDistance = Vector3.Distance(chiselInstance.transform.position, centerPos);
         }
 
-        if (Vector3.Distance(handController.RightHandPosition, centerPos) > maxSafeDistance)
+        if (hammerInstance != null)
         {
-            Debug.LogWarning("¸ÁÄ¡°¡ ¾ÈÀü °Å¸®¸¦ ¹ş¾î³µ½À´Ï´Ù!");
+            float hammerDistance = Vector3.Distance(hammerInstance.transform.position, centerPos);
         }
     }
 
     void OnHammerStrike(Vector3 strikePosition, Vector3 strikeDirection, float gripStrength)
     {
-        // Ã¤±¼ Äğ´Ù¿î È®ÀÎ
+        // ì±„êµ´ ì¿¨ë‹¤ìš´ í™•ì¸
         if (Time.time - lastMiningTime < miningCooldown)
         {
-            Debug.Log("Ã¤±¼ Äğ´Ù¿î Áß...");
+            Debug.Log("ì±„êµ´ ì¿¨ë‹¤ìš´ ì¤‘...");
             return;
         }
 
-        // À¯È¿ÇÑ Ã¤±¼ ´ë»óÀÌ ÀÖ´ÂÁö È®ÀÎ
+        // ìœ íš¨í•œ ì±„êµ´ ëŒ€ìƒì´ ìˆëŠ”ì§€ í™•ì¸
         if (!isChiselTargetValid)
         {
-            Debug.Log("À¯È¿ÇÑ Ã¤±¼ ´ë»óÀÌ ¾ø½À´Ï´Ù!");
+            Debug.Log("ìœ íš¨í•œ ì±„êµ´ ëŒ€ìƒì´ ì—†ìŠµë‹ˆë‹¤!");
             return;
         }
 
-        // Ã¤±¼ ½ÇÇà
+        // ì±„êµ´ ì‹¤í–‰
         ExecuteMining(currentChiselTarget, strikeDirection);
 
         lastMiningTime = Time.time;
@@ -315,12 +415,10 @@ public class ToolSystem : MonoBehaviour
 
     void ExecuteMining(Vector3 miningPoint, Vector3 surfaceNormal)
     {
-        isMining = true;
-
-        // ForceCalculator¿¡¼­ °è»êµÈ Èû °¡Á®¿À±â
+        // ForceCalculatorì—ì„œ ê³„ì‚°ëœ í˜ ê°€ì ¸ì˜¤ê¸°
         float calculatedForce = forceCalculator?.GetGemProtectionForce() ?? 20f;
 
-        // ÇöÀç ±¤¹°ÀÇ º¸¼® º¸È£ ½Ã½ºÅÛ¿¡ Ãæ°İ Àü´Ş
+        // í˜„ì¬ ê´‘ë¬¼ì˜ ë³´ì„ ë³´í˜¸ ì‹œìŠ¤í…œì— ì¶©ê²© ì „ë‹¬
         GameObject currentMineralBlock = FindCurrentMineralBlock();
         if (currentMineralBlock != null)
         {
@@ -331,26 +429,24 @@ public class ToolSystem : MonoBehaviour
             }
         }
 
-        // Ã¤±¼ È¿°ú »ı¼º
+        // ì±„êµ´ íš¨ê³¼ ìƒì„±
         CreateMiningEffect(miningPoint, surfaceNormal);
 
-        // Ã¤±¼ »ç¿îµå Àç»ı
+        // ì±„êµ´ ì‚¬ìš´ë“œ ì¬ìƒ
         if (miningSound != null && audioSource != null)
         {
             audioSource.PlayOneShot(miningSound);
         }
 
-        // ½ÇÁ¦ Á¶°¢ Á¦°Å
+        // ì‹¤ì œ ì¡°ê° ì œê±°
         RemoveChunksAtPoint(miningPoint);
 
-        Debug.Log($"Ã¤±¼ ½ÇÇà! À§Ä¡: {miningPoint}, Èû: {calculatedForce:F1}");
-
-        isMining = false;
+        Debug.Log($"ì±„êµ´ ì‹¤í–‰! ìœ„ì¹˜: {miningPoint}, í˜: {calculatedForce:F1}");
     }
 
     void RemoveChunksAtPoint(Vector3 miningPoint)
     {
-        // ÇöÀç ±¤¹° ºí·ÏÀÇ Á¶°¢µé Ã£±â
+        // í˜„ì¬ ê´‘ë¬¼ ë¸”ë¡ì˜ ì¡°ê°ë“¤ ì°¾ê¸°
         GameObject currentMineralBlock = FindCurrentMineralBlock();
         if (currentMineralBlock == null) return;
 
@@ -363,7 +459,7 @@ public class ToolSystem : MonoBehaviour
 
         if (activeChunks.Length == 0) return;
 
-        // °Å¸®¼øÀ¸·Î Á¤·Ä
+        // ê±°ë¦¬ìˆœìœ¼ë¡œ ì •ë ¬
         System.Array.Sort(activeChunks, (a, b) =>
         {
             float distA = Vector3.Distance(a.transform.position, miningPoint);
@@ -371,7 +467,7 @@ public class ToolSystem : MonoBehaviour
             return distA.CompareTo(distB);
         });
 
-        // °¡±î¿î Á¶°¢µé¸¸ Á¦°Å
+        // ê°€ê¹Œìš´ ì¡°ê°ë“¤ë§Œ ì œê±°
         int removedCount = 0;
         foreach (ChunkNode chunk in activeChunks)
         {
@@ -390,7 +486,7 @@ public class ToolSystem : MonoBehaviour
     {
         if (chunk == null) return;
 
-        // Joint ¿¬°á ²÷±â
+        // Joint ì—°ê²° ëŠê¸°
         Joint[] joints = chunk.GetComponents<Joint>();
         foreach (Joint joint in joints)
         {
@@ -403,7 +499,7 @@ public class ToolSystem : MonoBehaviour
             if (fixedJoint != null) Destroy(fixedJoint);
         }
 
-        // ºÎµå·¯¿î ¹°¸® Èû Àû¿ë
+        // ë¶€ë“œëŸ¬ìš´ ë¬¼ë¦¬ í˜ ì ìš©
         Rigidbody rb = chunk.GetComponent<Rigidbody>();
         if (rb != null)
         {
@@ -415,7 +511,7 @@ public class ToolSystem : MonoBehaviour
             rb.AddTorque(Random.insideUnitSphere * gentleForce * 0.2f, ForceMode.Impulse);
         }
 
-        // ¶³¾îÁö´Â ¼Ò¸® (Áö¿¬ Àç»ı)
+        // ë–¨ì–´ì§€ëŠ” ì†Œë¦¬ (ì§€ì—° ì¬ìƒ)
         if (chunkFallSounds != null && chunkFallSounds.Length > 0)
         {
             StartCoroutine(PlayDelayedFallSound(Random.Range(0.2f, 0.8f)));
@@ -424,22 +520,22 @@ public class ToolSystem : MonoBehaviour
 
     void CreateMiningEffect(Vector3 position, Vector3 normal)
     {
-        // ÆÄÆ¼Å¬ ½Ã½ºÅÛÀÌ ÀÖÀ¸¸é »ç¿ë
+        // íŒŒí‹°í´ ì‹œìŠ¤í…œì´ ìˆìœ¼ë©´ ì‚¬ìš©
         if (miningParticleEffect != null)
         {
             miningParticleEffect.transform.position = position;
             miningParticleEffect.Play();
         }
 
-        // µ¹°¡·ç È¿°ú
-        for (int i = 0; i < 5; i++)
+        // ëŒê°€ë£¨ íš¨ê³¼
+        for (int i = 0; i < 3; i++)
         {
             GameObject dust = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             dust.transform.position = position + Random.insideUnitSphere * 0.1f;
             dust.transform.localScale = Vector3.one * Random.Range(0.02f, 0.05f);
 
             Renderer dustRenderer = dust.GetComponent<Renderer>();
-            dustRenderer.material.color = new Color(0.7f, 0.6f, 0.4f, 0.8f);
+            dustRenderer.material.color = new Color(0.7f, 0.6f, 0.4f);
 
             Rigidbody dustRb = dust.AddComponent<Rigidbody>();
             Vector3 force = normal * Random.Range(1f, 3f) + Random.insideUnitSphere * 0.5f;
@@ -448,9 +544,8 @@ public class ToolSystem : MonoBehaviour
             Destroy(dust, 1.5f);
         }
 
-        // µ¹Á¶°¢ È¿°ú
-        int chipCount = Random.Range(1, 3);
-        for (int i = 0; i < chipCount; i++)
+        // ëŒì¡°ê° íš¨ê³¼
+        for (int i = 0; i < 2; i++)
         {
             GameObject chip = GameObject.CreatePrimitive(PrimitiveType.Cube);
             chip.transform.position = position + Random.insideUnitSphere * 0.05f;
@@ -479,18 +574,37 @@ public class ToolSystem : MonoBehaviour
         }
     }
 
+    [ContextMenu("ë„êµ¬ ìœ„ì¹˜ ë¦¬ì…‹")]
+    public void ResetToolPositions()
+    {
+        // ë„êµ¬ë“¤ì„ ì† Visual ìœ„ì¹˜ë¡œ ì¦‰ì‹œ ì´ë™
+        if (chiselInstance != null && leftHandVisual != null)
+        {
+            chiselInstance.transform.position = leftHandVisual.position;
+            chiselInstance.transform.rotation = leftHandVisual.rotation;
+        }
+
+        if (hammerInstance != null && rightHandVisual != null)
+        {
+            hammerInstance.transform.position = rightHandVisual.position;
+            hammerInstance.transform.rotation = rightHandVisual.rotation;
+        }
+
+        Debug.Log("ë„êµ¬ ìœ„ì¹˜ ë¦¬ì…‹ ì™„ë£Œ");
+    }
+
     void OnDrawGizmos()
     {
         if (!Application.isPlaying) return;
 
-        // Ã¤±¼ ¹üÀ§ ½Ã°¢È­
+        // ì±„êµ´ ë²”ìœ„ ì‹œê°í™”
         if (isChiselTargetValid)
         {
             Gizmos.color = forceCalculator?.IsSafeForce() == true ? Color.green : Color.red;
             Gizmos.DrawWireSphere(currentChiselTarget, miningRadius);
         }
 
-        // ¾ÈÀü °Å¸® ½Ã°¢È­
+        // ì•ˆì „ ê±°ë¦¬ ì‹œê°í™”
         if (enableSafetySystem)
         {
             GameObject currentMineralBlock = FindCurrentMineralBlock();
@@ -504,7 +618,7 @@ public class ToolSystem : MonoBehaviour
 
     void OnDestroy()
     {
-        // ÀÌº¥Æ® ±¸µ¶ ÇØÁ¦
+        // ì´ë²¤íŠ¸ êµ¬ë… í•´ì œ
         if (handController != null)
         {
             handController.OnHammerStrike -= OnHammerStrike;

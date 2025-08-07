@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// 기획서의 하이브리드 힘 계산 시스템
+/// 기획서의 하이브리드 힘 계산 시스템 - 커스텀 쥐는 강도 연동
 /// 최종 채굴 힘 = 주먹 쥠 강도 + 손 움직임 속도
 /// 약함(0~55%), 보통(55~85%), 강함(85~100%)
 /// </summary>
@@ -13,18 +13,22 @@ public class ForceCalculator : MonoBehaviour
     [Range(0f, 1f)]
     public float velocityWeight = 0.4f; // 속도 가중치 (40%)
 
+    [Header("커스텀 쥐는 강도 연동")]
+    public bool useCustomGripCalculator = true;
+    public float customGripMultiplier = 1.2f;
+
     [Header("속도 정규화 설정")]
-    public float maxVelocityThreshold = 3f; // 최대 속도 기준값
-    public float minVelocityThreshold = 0.1f; // 최소 속도 기준값
+    public float maxVelocityThreshold = 2f;
+    public float minVelocityThreshold = 0.03f;
 
     [Header("힘 단계 구분")]
     [Range(0f, 1f)]
-    public float weakForceThreshold = 0.55f; // 약함 상한선 (55%)
+    public float weakForceThreshold = 0.3f; // 약함 상한선 (55%)
     [Range(0f, 1f)]
-    public float strongForceThreshold = 0.85f; // 강함 하한선 (85%)
+    public float strongForceThreshold = 0.7f; // 강함 하한선 (85%)
 
     [Header("보석 보호 시스템 연동")]
-    public float forceMultiplierForGems = 30f; // GemProtectionSystem용 힘 배율
+    public float forceMultiplierForGems = 30f;
 
     [Header("디버그")]
     public bool enableDebugLogs = true;
@@ -32,6 +36,7 @@ public class ForceCalculator : MonoBehaviour
 
     // 시스템 참조
     private HandController handController;
+    private GripCalculator gripCalculator;
     private UIManager uiManager;
 
     // 계산된 힘 데이터
@@ -39,6 +44,10 @@ public class ForceCalculator : MonoBehaviour
     public ForceLevel CurrentForceLevel { get; private set; }
     public float NormalizedGripStrength { get; private set; }
     public float NormalizedVelocity { get; private set; }
+
+    // 커스텀 쥐는 강도 관련 데이터
+    public float RawGripStrength { get; private set; }
+    public float AdjustedGripStrength { get; private set; }
 
     /// <summary>
     /// 힘의 강도 단계
@@ -57,7 +66,6 @@ public class ForceCalculator : MonoBehaviour
 
     void InitializeForceCalculator()
     {
-        // HandController 참조
         handController = FindFirstObjectByType<HandController>();
         if (handController == null)
         {
@@ -65,14 +73,19 @@ public class ForceCalculator : MonoBehaviour
             return;
         }
 
-        // UIManager 참조 (힘 표시용)
+        gripCalculator = handController.GetComponent<GripCalculator>();
+        if (gripCalculator == null)
+        {
+            gripCalculator = FindFirstObjectByType<GripCalculator>();
+        }
+
         uiManager = FindFirstObjectByType<UIManager>();
         if (uiManager == null)
         {
             Debug.LogWarning("UIManager를 찾을 수 없습니다. UI 연동이 비활성화됩니다.");
         }
 
-        Debug.Log("ForceCalculator 초기화 완료");
+        Debug.Log($"ForceCalculator 초기화 완료 - 커스텀 쥐는 강도: {(useCustomGripCalculator && gripCalculator != null ? "활성" : "비활성")}");
     }
 
     void Update()
@@ -89,13 +102,21 @@ public class ForceCalculator : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 기획서의 하이브리드 힘 계산 공식 적용
-    /// </summary>
     void CalculateCurrentForce()
     {
         // 1. 주먹 쥠 강도 정규화 (0~1)
-        NormalizedGripStrength = Mathf.Clamp01(handController.RightHandGrabStrength);
+        RawGripStrength = handController.RightHandGrabStrength;
+
+        if (useCustomGripCalculator && gripCalculator != null)
+        {
+            AdjustedGripStrength = RawGripStrength * customGripMultiplier;
+        }
+        else
+        {
+            AdjustedGripStrength = RawGripStrength;
+        }
+
+        NormalizedGripStrength = Mathf.Clamp01(AdjustedGripStrength);
 
         // 2. 손 움직임 속도 정규화 (0~1)
         float rawVelocity = handController.RightHandVelocity.magnitude;
@@ -109,27 +130,19 @@ public class ForceCalculator : MonoBehaviour
         CurrentForce = Mathf.Clamp01(CurrentForce);
     }
 
-    /// <summary>
-    /// 속도를 0~1 범위로 정규화
-    /// </summary>
     float NormalizeVelocity(float rawVelocity)
     {
-        // 최소값 이하는 0으로 처리
         if (rawVelocity <= minVelocityThreshold)
             return 0f;
 
-        // 최대값 이상은 1로 처리  
         if (rawVelocity >= maxVelocityThreshold)
             return 1f;
 
-        // 선형 보간으로 0~1 변환
         return (rawVelocity - minVelocityThreshold) /
                (maxVelocityThreshold - minVelocityThreshold);
     }
 
-    /// <summary>
-    /// 힘 레벨 업데이트 (약함/보통/강함)
-    /// </summary>
+
     void UpdateForceLevel()
     {
         if (CurrentForce <= weakForceThreshold)
@@ -146,103 +159,95 @@ public class ForceCalculator : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// GemProtectionSystem에서 사용할 힘 값 계산
-    /// </summary>
     public float GetGemProtectionForce()
     {
         return CurrentForce * forceMultiplierForGems;
     }
 
-    /// <summary>
-    /// 현재 힘이 안전한 수준인지 확인
-    /// </summary>
     public bool IsSafeForce()
     {
         return CurrentForceLevel == ForceLevel.Weak;
     }
 
-    /// <summary>
-    /// 보석에 위험한 수준의 힘인지 확인  
-    /// </summary>
     public bool IsDangerousForGems()
     {
         return CurrentForceLevel == ForceLevel.Strong;
     }
 
-    /// <summary>
-    /// UIManager와 연동하여 힘 정보 전달
-    /// </summary>
     public void UpdateUIForce()
     {
         if (uiManager != null)
         {
             // UIManager의 힘 표시 시스템과 연동
-            // (UIManager에 ForceCalculator 연동 메서드 필요)
         }
     }
 
-    /// <summary>
-    /// 힘 계산 상세 정보 로그 출력
-    /// </summary>
     void LogForceCalculation()
     {
+        string gripType = useCustomGripCalculator && gripCalculator != null ? "커스텀" : "기본";
+
         Debug.Log("=== 힘 계산 결과 ===");
-        Debug.Log($"쥠 강도: {NormalizedGripStrength:F2} ({handController.RightHandGrabStrength:F2})");
-        Debug.Log($"속도: {NormalizedVelocity:F2} ({handController.RightHandVelocity.magnitude:F2})");
+        Debug.Log($"쥠 강도 ({gripType}): 원본={RawGripStrength:F2}, 조정={AdjustedGripStrength:F2}, 정규화={NormalizedGripStrength:F2}");
+        Debug.Log($"속도: 원본={handController.RightHandVelocity.magnitude:F2}, 정규화={NormalizedVelocity:F2}");
         Debug.Log($"최종 힘: {CurrentForce:F2} ({CurrentForceLevel})");
         Debug.Log($"보석용 힘: {GetGemProtectionForce():F1}");
         Debug.Log($"안전 여부: {(IsSafeForce() ? "안전" : "위험")}");
+
+        if (useCustomGripCalculator && gripCalculator != null)
+        {
+            Debug.Log($"커스텀 배율: {customGripMultiplier:F1}");
+            Debug.Log($"GripCalculator 민감도: {gripCalculator.sensitivity:F1}");
+        }
         Debug.Log("==================");
     }
 
-    /// <summary>
-    /// 힘 레벨에 따른 색상 반환 (UI용)
-    /// </summary>
     public Color GetForceColor()
     {
         switch (CurrentForceLevel)
         {
             case ForceLevel.Weak:
-                return Color.green; // 안전 - 초록색
+                return Color.green;
             case ForceLevel.Medium:
-                return Color.yellow; // 주의 - 노란색
+                return Color.yellow;
             case ForceLevel.Strong:
-                return Color.red; // 위험 - 빨간색
+                return Color.red;
             default:
                 return Color.white;
         }
     }
 
-    /// <summary>
-    /// 힘 레벨 설명 텍스트 반환
-    /// </summary>
     public string GetForceDescription()
     {
         switch (CurrentForceLevel)
         {
             case ForceLevel.Weak:
-                return "안전한 채굴";
+                return "부드러운 채굴 (0-30%)";
             case ForceLevel.Medium:
-                return "주의 필요";
+                return "적당한 채굴 (30-70%)";
             case ForceLevel.Strong:
-                return "보석 손상 위험!";
+                return "강력한 채굴 (70-100%)";
             default:
                 return "알 수 없음";
         }
     }
 
-    /// <summary>
-    /// 현재 힘 상태의 상세 정보 반환
-    /// </summary>
     public (float force, ForceLevel level, bool isSafe, string description) GetForceStatus()
     {
         return (CurrentForce, CurrentForceLevel, IsSafeForce(), GetForceDescription());
     }
 
-    /// <summary>
-    /// 테스트용: 특정 값으로 힘 강제 설정
-    /// </summary>
+    public void SetCustomGripEnabled(bool enabled)
+    {
+        useCustomGripCalculator = enabled;
+        Debug.Log($"커스텀 쥐는 강도 계산기: {(enabled ? "활성화" : "비활성화")}");
+    }
+
+    public void SetCustomGripMultiplier(float multiplier)
+    {
+        customGripMultiplier = Mathf.Clamp(multiplier, 0.1f, 3.0f);
+        Debug.Log($"커스텀 쥐는 강도 배율 설정: {customGripMultiplier:F1}");
+    }
+
     [ContextMenu("약한 힘 테스트 (30%)")]
     public void TestWeakForce()
     {
@@ -271,13 +276,24 @@ public class ForceCalculator : MonoBehaviour
     public void PrintCurrentForceStatus()
     {
         var status = GetForceStatus();
+        string gripSystem = useCustomGripCalculator && gripCalculator != null ? "커스텀" : "기본";
 
         Debug.Log("=== 현재 힘 상태 ===");
+        Debug.Log($"쥐는 강도 시스템: {gripSystem}");
         Debug.Log($"힘: {status.force * 100f:F1}%");
         Debug.Log($"레벨: {status.level}");
         Debug.Log($"안전: {status.isSafe}");
         Debug.Log($"설명: {status.description}");
+        Debug.Log($"원본 쥐는 강도: {RawGripStrength:F2}");
+        Debug.Log($"조정된 쥐는 강도: {AdjustedGripStrength:F2}");
+        Debug.Log($"속도 기여분: {NormalizedVelocity:F2}");
         Debug.Log("===================");
+    }
+
+    [ContextMenu("쥐는 강도 시스템 전환")]
+    public void ToggleGripSystem()
+    {
+        SetCustomGripEnabled(!useCustomGripCalculator);
     }
 
     void OnDrawGizmos()
@@ -302,5 +318,12 @@ public class ForceCalculator : MonoBehaviour
         Vector3 forcePos = Vector3.Lerp(barStart, barEnd, CurrentForce);
         Gizmos.color = GetForceColor();
         Gizmos.DrawSphere(forcePos, 0.05f);
+
+        // 약함/강함 경계선 표시
+        Gizmos.color = Color.yellow;
+        Vector3 weakBoundary = Vector3.Lerp(barStart, barEnd, weakForceThreshold);
+        Vector3 strongBoundary = Vector3.Lerp(barStart, barEnd, strongForceThreshold);
+        Gizmos.DrawLine(weakBoundary + Vector3.up * 0.1f, weakBoundary + Vector3.down * 0.1f);
+        Gizmos.DrawLine(strongBoundary + Vector3.up * 0.1f, strongBoundary + Vector3.down * 0.1f);
     }
 }

@@ -77,7 +77,7 @@ public class ChunkCounter : MonoBehaviour
         }
     }
 
-    ChunkNode.ChunkState GetChunkState(ChunkNode chunk)
+    public ChunkNode.ChunkState GetChunkState(ChunkNode chunk)
     {
         if (stateFieldInfo == null || chunk == null)
         {
