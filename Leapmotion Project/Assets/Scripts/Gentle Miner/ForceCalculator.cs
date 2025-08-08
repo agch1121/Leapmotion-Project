@@ -1,100 +1,109 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 
 /// <summary>
-/// ±âÈ¹¼­ÀÇ ÇÏÀÌºê¸®µå Èû °è»ê ½Ã½ºÅÛ - Ä¿½ºÅÒ Áã´Â °­µµ ¿¬µ¿
-/// ÃÖÁ¾ Ã¤±¼ Èû = ÁÖ¸Ô Áç °­µµ + ¼Õ ¿òÁ÷ÀÓ ¼Óµµ
-/// ¾àÇÔ(0~55%), º¸Åë(55~85%), °­ÇÔ(85~100%)
+/// ê¸°íšì„œì˜ í•˜ì´ë¸Œë¦¬ë“œ í˜ ê³„ì‚° ì‹œìŠ¤í…œ - ì»¤ìŠ¤í…€ ì¥ëŠ” ê°•ë„ ì—°ë™
+/// ìµœì¢… ì±„êµ´ í˜ = ì£¼ë¨¹ ì¥  ê°•ë„(ì •ê·œí™”) * ê°€ì¤‘ì¹˜ + ì† ì›€ì§ì„ ì†ë„(ì •ê·œí™”) * ê°€ì¤‘ì¹˜
+/// ForceLevelë¡œ ì•½/ì¤‘/ê°• ë‹¨ê³„ë¥¼ êµ¬ë¶„í•˜ì—¬ UI/ë³´ì„ë³´í˜¸ ì‹œìŠ¤í…œê³¼ ì—°ë™
 /// </summary>
 public class ForceCalculator : MonoBehaviour
 {
-    [Header("Èû °è»ê ¼³Á¤")]
+    [Header("í˜ ê³„ì‚° ì„¤ì •")]
     [Range(0f, 1f)]
-    public float gripStrengthWeight = 0.6f; // Áç °­µµ °¡ÁßÄ¡ (60%)
+    public float gripStrengthWeight = 0.6f; // ìµœì¢… í˜ì—ì„œ 'ì¥  ê°•ë„' ë¹„ì¤‘ (ì˜ˆ: 60%)
     [Range(0f, 1f)]
-    public float velocityWeight = 0.4f; // ¼Óµµ °¡ÁßÄ¡ (40%)
+    public float velocityWeight = 0.4f;     // ìµœì¢… í˜ì—ì„œ 'ì† ì†ë„' ë¹„ì¤‘ (ì˜ˆ: 40%)
+    // âš ï¸ ì£¼ì˜: ë‘ ê°€ì¤‘ì¹˜ì˜ í•©ì´ ë°˜ë“œì‹œ 1ì¼ í•„ìš”ëŠ” ì—†ì§€ë§Œ, í•©ì´ 1ì´ ì•„ë‹ ê²½ìš° ì²´ê° ìŠ¤ì¼€ì¼ì´ ë³€í•¨.
 
-    [Header("Ä¿½ºÅÒ Áã´Â °­µµ ¿¬µ¿")]
-    public bool useCustomGripCalculator = true;
-    public float customGripMultiplier = 1.2f;
+    [Header("ì»¤ìŠ¤í…€ ì¥ëŠ” ê°•ë„ ì—°ë™")]
+    public bool useCustomGripCalculator = true; // GripCalculator ì‚¬ìš© ì—¬ë¶€(ì—†ìœ¼ë©´ HandControllerì˜ ê¸°ë³¸ê°’ ì‚¬ìš©)
+    public float customGripMultiplier = 1.2f;   // ì»¤ìŠ¤í…€ ì¥  ê°•ë„ ë³´ì • ë°°ìœ¨(ë¯¼ê°ë„ ë¯¸ì„¸ íŠœë‹ìš©)
 
-    [Header("¼Óµµ Á¤±ÔÈ­ ¼³Á¤")]
-    public float maxVelocityThreshold = 2f;
-    public float minVelocityThreshold = 0.03f;
+    [Header("ì†ë„ ì •ê·œí™” ì„¤ì •")]
+    public float maxVelocityThreshold = 2f;     // ì´ ì´ìƒ ì†ë„ëŠ” 1ë¡œ í´ë¨í”„
+    public float minVelocityThreshold = 0.03f;  // ì´ ì´í•˜ ì†ë„ëŠ” 0ìœ¼ë¡œ ë°”ë‹¥ ì²˜ë¦¬(ë¯¸ì„¸ ë–¨ë¦¼ ì œê±°)
 
-    [Header("Èû ´Ü°è ±¸ºĞ")]
+    [Header("í˜ ë‹¨ê³„ êµ¬ë¶„")]
     [Range(0f, 1f)]
-    public float weakForceThreshold = 0.3f; // ¾àÇÔ »óÇÑ¼± (55%)
+    public float weakForceThreshold = 0.3f;     // ì•½í•¨ ìƒí•œ ê²½ê³„(0~0.3 -> Weak)
     [Range(0f, 1f)]
-    public float strongForceThreshold = 0.7f; // °­ÇÔ ÇÏÇÑ¼± (85%)
+    public float strongForceThreshold = 0.7f;   // ê°•í•¨ í•˜í•œ ê²½ê³„(0.7~1.0 -> Strong)
+    // ğŸ’¡ ê¸°íšì„œ í…ìŠ¤íŠ¸(55%/85%)ì™€ í˜„ì¬ ê°’(30%/70%)ì´ ë‹¤ë¦„. í¼ì„¼íŠ¸ ê¸°ì¤€ì„ ë°”ê¾¸ë ¤ë©´ ì—¬ê¸° ê°’ì„ 0.55 / 0.85ë¡œ ì¡°ì •.
 
-    [Header("º¸¼® º¸È£ ½Ã½ºÅÛ ¿¬µ¿")]
-    public float forceMultiplierForGems = 30f;
+    [Header("ë³´ì„ ë³´í˜¸ ì‹œìŠ¤í…œ ì—°ë™")]
+    public float forceMultiplierForGems = 30f;  // ë³´ì„ ë³´í˜¸ ì‹œìŠ¤í…œì—ì„œ ì‚¬ìš©í•˜ëŠ” ìŠ¤ì¼€ì¼ íŒ©í„°(ê²Œì„ ë°¸ëŸ°ì‹±ìš©)
 
-    [Header("µğ¹ö±×")]
-    public bool enableDebugLogs = true;
-    public bool showForceVisualization = true;
+    [Header("ë””ë²„ê·¸")]
+    public bool enableDebugLogs = true;         // íƒ€ê²©(frames) ì‹œ ê³„ì‚° ë¡œê·¸ ì¶œë ¥
+    public bool showForceVisualization = true;  // Gizmosë¡œ í˜ ë§‰ëŒ€/êµ¬ì²´ ì‹œê°í™”
 
-    // ½Ã½ºÅÛ ÂüÁ¶
-    private HandController handController;
-    private GripCalculator gripCalculator;
-    private UIManager uiManager;
+    // === ì‹œìŠ¤í…œ ì°¸ì¡° ===
+    private HandController handController; // âš™ï¸ ì™¸ë¶€ ìŠ¤í¬ë¦½íŠ¸ ê°€ì •: RightHandGrabStrength(float 0~1), RightHandVelocity(Vector3), IsStrikeDetected(bool)
+    private GripCalculator gripCalculator; // âš™ï¸ ì»¤ìŠ¤í…€ ì¥  ê°•ë„ ê³„ì‚°ê¸°(ì—†ìœ¼ë©´ ê¸°ë³¸ ì¡í˜ ê°•ë„ ì‚¬ìš©)
+    private UIManager uiManager;           // âš™ï¸ ì„ íƒ: UI ì—°ë™(ê²Œì´ì§€/í…ìŠ¤íŠ¸ ìƒ‰ìƒ ë“±)
 
-    // °è»êµÈ Èû µ¥ÀÌÅÍ
-    public float CurrentForce { get; private set; }
-    public ForceLevel CurrentForceLevel { get; private set; }
-    public float NormalizedGripStrength { get; private set; }
-    public float NormalizedVelocity { get; private set; }
+    // === ê³„ì‚° ê²°ê³¼(ì½ê¸° ì „ìš©) ===
+    public float CurrentForce { get; private set; }            // ìµœì¢… í˜(0~1)
+    public ForceLevel CurrentForceLevel { get; private set; }  // ì•½/ì¤‘/ê°• ë‹¨ê³„
+    public float NormalizedGripStrength { get; private set; }  // ì •ê·œí™”ëœ ì¥  ê°•ë„(0~1)
+    public float NormalizedVelocity { get; private set; }      // ì •ê·œí™”ëœ ì†ë„(0~1)
 
-    // Ä¿½ºÅÒ Áã´Â °­µµ °ü·Ã µ¥ÀÌÅÍ
-    public float RawGripStrength { get; private set; }
-    public float AdjustedGripStrength { get; private set; }
+    // === ë‚´ë¶€ ì¤‘ê°„ê°’(ë””ë²„ê·¸ìš©) ===
+    public float RawGripStrength { get; private set; }         // HandControllerì—ì„œ ì½ì€ ì›ì‹œ ì¥  ê°•ë„(0~1 ê°€ì •)
+    public float AdjustedGripStrength { get; private set; }    // ì»¤ìŠ¤í…€ ë°°ìœ¨/ê³„ì‚° ë°˜ì˜ í›„ ê°’
 
     /// <summary>
-    /// ÈûÀÇ °­µµ ´Ü°è
+    /// í˜ì˜ ê°•ë„ ë‹¨ê³„(ê²Œì„ ë¡œì§ ë¶„ê¸°Â·ì´í™íŠ¸Â·ì‚¬ìš´ë“œ/ë°ë¯¸ì§€ ìŠ¤ì¼€ì¼ ë“±ì— í™œìš©)
     /// </summary>
     public enum ForceLevel
     {
-        Weak,    // 0~55%: ¾ÈÀüÇÑ Ã¤±¼
-        Medium,  // 55~85%: ÁÖÀÇ ÇÊ¿ä  
-        Strong   // 85~100%: º¸¼® ¼Õ»ó À§Çè
+        Weak,    // ì•ˆì „(ë³´ì„ ì†ìƒ ë‚®ìŒ)
+        Medium,  // ì£¼ì˜ í•„ìš”
+        Strong   // ì†ìƒ ìœ„í—˜(ê²½ê³ /ì§„ë™/ì‚¬ìš´ë“œ ë“± ê°•í•˜ê²Œ)
     }
 
     void Start()
     {
-        InitializeForceCalculator();
+        InitializeForceCalculator(); // ì°¸ì¡° ìºì‹± ë° ì´ˆê¸° ìƒíƒœ ë¡œê·¸
     }
 
+    /// <summary>
+    /// ì˜ì¡´ì„±(HandController, GripCalculator, UIManager) ì°¾ì•„ ìºì‹±
+    /// </summary>
     void InitializeForceCalculator()
     {
+        // ì”¬ ë‚´ ì²« ë²ˆì§¸ HandController íƒìƒ‰(ëŸ°íƒ€ì„ 1íšŒë§Œ ìˆ˜í–‰ â†’ ë¹„ìš© ì €ë ´)
         handController = FindFirstObjectByType<HandController>();
         if (handController == null)
         {
-            Debug.LogError("HandController¸¦ Ã£À» ¼ö ¾ø½À´Ï´Ù!");
-            return;
+            Debug.LogError("HandControllerë¥¼ ì°¾ì„ ìˆ˜ ì—†ìŠµë‹ˆë‹¤!");
+            return; // í•„ìˆ˜ ì˜ì¡´ì„± ë¶€ì¬ â†’ ì—…ë°ì´íŠ¸ ì¤‘ ê³„ì‚° ì¤‘ë‹¨
         }
 
+        // ê°™ì€ ì˜¤ë¸Œì íŠ¸ì— ë¶™ì–´ ìˆìœ¼ë©´ ìš°ì„ , ì•„ë‹ˆë©´ ì”¬ ì „ì²´ì—ì„œ ê²€ìƒ‰
         gripCalculator = handController.GetComponent<GripCalculator>();
         if (gripCalculator == null)
         {
             gripCalculator = FindFirstObjectByType<GripCalculator>();
         }
 
+        // UIëŠ” ì˜µì…˜. ì—†ìœ¼ë©´ ë‹¨ìˆœ ê²½ê³ ë§Œ ì¶œë ¥
         uiManager = FindFirstObjectByType<UIManager>();
         if (uiManager == null)
         {
-            Debug.LogWarning("UIManager¸¦ Ã£À» ¼ö ¾ø½À´Ï´Ù. UI ¿¬µ¿ÀÌ ºñÈ°¼ºÈ­µË´Ï´Ù.");
+            Debug.LogWarning("UIManagerë¥¼ ì°¾ì„ ìˆ˜ ì—†ìŠµë‹ˆë‹¤. UI ì—°ë™ì´ ë¹„í™œì„±í™”ë©ë‹ˆë‹¤.");
         }
 
-        Debug.Log($"ForceCalculator ÃÊ±âÈ­ ¿Ï·á - Ä¿½ºÅÒ Áã´Â °­µµ: {(useCustomGripCalculator && gripCalculator != null ? "È°¼º" : "ºñÈ°¼º")}");
+        Debug.Log($"ForceCalculator ì´ˆê¸°í™” ì™„ë£Œ - ì»¤ìŠ¤í…€ ì¥ëŠ” ê°•ë„: {(useCustomGripCalculator && gripCalculator != null ? "í™œì„±" : "ë¹„í™œì„±")}");
     }
 
     void Update()
     {
         if (handController != null)
         {
-            CalculateCurrentForce();
-            UpdateForceLevel();
+            CalculateCurrentForce(); // ì¥  ê°•ë„ + ì†ë„ â†’ ìµœì¢… í˜(0~1)
+            UpdateForceLevel();      // ìµœì¢… í˜ì— ë”°ë¥¸ ë ˆë²¨ ê²°ì •
 
+            // íŠ¹ì • ì´ë²¤íŠ¸(ì˜ˆ: ë§ì¹˜ íƒ€ê²© í”„ë ˆì„)ì—ì„œë§Œ ìƒì„¸ ë¡œê·¸ ì¶œë ¥ â†’ ìŠ¤íŒ¸ ë°©ì§€
             if (enableDebugLogs && handController.IsStrikeDetected)
             {
                 LogForceCalculation();
@@ -102,11 +111,18 @@ public class ForceCalculator : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// ìµœì¢… í˜ ê³„ì‚° íŒŒì´í”„ë¼ì¸
+    /// 1) RawGripStrengthâ†’Adjustedâ†’Normalized
+    /// 2) ì†ë„ ì •ê·œí™”
+    /// 3) ê°€ì¤‘ í‰ê· ìœ¼ë¡œ í•©ì„± í›„ [0,1] í´ë¨í”„
+    /// </summary>
     void CalculateCurrentForce()
     {
-        // 1. ÁÖ¸Ô Áç °­µµ Á¤±ÔÈ­ (0~1)
+        // 1) ì¥  ê°•ë„(0~1 ê°€ì •) ì½ê¸°
         RawGripStrength = handController.RightHandGrabStrength;
 
+        // ì»¤ìŠ¤í…€ ê³„ì‚°ê¸° ì‚¬ìš© ì‹œ ë°°ìœ¨ë¡œ ë¯¸ì„¸ ì¡°ì •(GripCalculatorì˜ ë¯¼ê°ë„ì™€ ë³„ê°œ)
         if (useCustomGripCalculator && gripCalculator != null)
         {
             AdjustedGripStrength = RawGripStrength * customGripMultiplier;
@@ -116,33 +132,40 @@ public class ForceCalculator : MonoBehaviour
             AdjustedGripStrength = RawGripStrength;
         }
 
+        // 0~1ë¡œ í´ë¨í”„(ë°°ìœ¨ë¡œ 1 ì´ˆê³¼ ê°€ëŠ¥ â†’ ì•ˆì „ ê³ ì •)
         NormalizedGripStrength = Mathf.Clamp01(AdjustedGripStrength);
 
-        // 2. ¼Õ ¿òÁ÷ÀÓ ¼Óµµ Á¤±ÔÈ­ (0~1)
+        // 2) ì† ì†ë„ ì •ê·œí™”(ìµœì†Œ/ìµœëŒ€ ì„ê³„ ê¸°ë°˜ ì„ í˜• ë§¤í•‘)
         float rawVelocity = handController.RightHandVelocity.magnitude;
         NormalizedVelocity = NormalizeVelocity(rawVelocity);
 
-        // 3. ±âÈ¹¼­ °ø½Ä Àû¿ë: ÃÖÁ¾ Ã¤±¼ Èû = Áç °­µµ + ¼Óµµ
+        // 3) ìµœì¢… í˜ = ì¥  ê°•ë„ ê¸°ì—¬ + ì†ë„ ê¸°ì—¬
         CurrentForce = (NormalizedGripStrength * gripStrengthWeight) +
-                      (NormalizedVelocity * velocityWeight);
+                       (NormalizedVelocity * velocityWeight);
 
-        // 4. 0~1 ¹üÀ§·Î Å¬·¥ÇÁ
+        // 4) ì•ˆì „ ë²”ìœ„ë¡œ ê³ ì •
         CurrentForce = Mathf.Clamp01(CurrentForce);
     }
 
+    /// <summary>
+    /// ì†ë„ë¥¼ [min, max] êµ¬ê°„ìœ¼ë¡œ ì •ê·œí™”í•˜ì—¬ 0~1ë¡œ ë°˜í™˜
+    /// </summary>
     float NormalizeVelocity(float rawVelocity)
     {
         if (rawVelocity <= minVelocityThreshold)
-            return 0f;
+            return 0f; // ë…¸ì´ì¦ˆ/ì •ì§€ êµ¬ê°„ ì œê±°
 
         if (rawVelocity >= maxVelocityThreshold)
-            return 1f;
+            return 1f; // ìƒí•œ ì´ìƒì€ ë™ì¼ ì·¨ê¸‰
 
+        // êµ¬ê°„ ë‚´ ì„ í˜• ìŠ¤ì¼€ì¼
         return (rawVelocity - minVelocityThreshold) /
                (maxVelocityThreshold - minVelocityThreshold);
     }
 
-
+    /// <summary>
+    /// ìµœì¢… í˜(CurrentForce)ì— ë”°ë¼ ë“±ê¸‰(Weak/Medium/Strong) ê²°ì •
+    /// </summary>
     void UpdateForceLevel()
     {
         if (CurrentForce <= weakForceThreshold)
@@ -159,167 +182,191 @@ public class ForceCalculator : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// ë³´ì„ ë³´í˜¸ ì‹œìŠ¤í…œì—ì„œ ì“°ê¸° ì¢‹ì€ ìŠ¤ì¼€ì¼ ê°’(ì˜ˆ: ë°ë¯¸ì§€/ë‚´êµ¬ë„ ê³„ì‚° ë“±ì— ë°”ë¡œ ê³±)
+    /// </summary>
     public float GetGemProtectionForce()
     {
         return CurrentForce * forceMultiplierForGems;
     }
 
+    /// <summary>
+    /// ì•ˆì „ êµ¬ê°„ ì—¬ë¶€(ì•½í•¨ êµ¬ê°„)
+    /// </summary>
     public bool IsSafeForce()
     {
         return CurrentForceLevel == ForceLevel.Weak;
     }
 
+    /// <summary>
+    /// ë³´ì„ì— ìœ„í—˜í•œ êµ¬ê°„ ì—¬ë¶€(ê°•í•¨ êµ¬ê°„)
+    /// </summary>
     public bool IsDangerousForGems()
     {
         return CurrentForceLevel == ForceLevel.Strong;
     }
 
+    /// <summary>
+    /// UIì™€ ì—°ë™í•˜ì—¬ ê²Œì´ì§€/í…ìŠ¤íŠ¸/ìƒ‰ìƒ ë“±ì„ ê°±ì‹ (ì‹¤ì œ êµ¬í˜„ì€ UIManager ìª½ì— ë§ì¶° ì¶”ê°€)
+    /// </summary>
     public void UpdateUIForce()
     {
         if (uiManager != null)
         {
-            // UIManagerÀÇ Èû Ç¥½Ã ½Ã½ºÅÛ°ú ¿¬µ¿
+            // TODO: uiManager.SetForceGauge(CurrentForce, GetForceColor(), GetForceDescription()); ë“±ìœ¼ë¡œ ì—°ê²°
         }
     }
 
+    /// <summary>
+    /// íƒ€ê²© ì´ë²¤íŠ¸ ì‹œì ì— ìƒì„¸ ë¡œê·¸ ì¶œë ¥(ë°¸ëŸ°ì‹±/íŠœë‹ì— ìœ ìš©)
+    /// </summary>
     void LogForceCalculation()
     {
-        string gripType = useCustomGripCalculator && gripCalculator != null ? "Ä¿½ºÅÒ" : "±âº»";
+        string gripType = useCustomGripCalculator && gripCalculator != null ? "ì»¤ìŠ¤í…€" : "ê¸°ë³¸";
 
-        Debug.Log("=== Èû °è»ê °á°ú ===");
-        Debug.Log($"Áç °­µµ ({gripType}): ¿øº»={RawGripStrength:F2}, Á¶Á¤={AdjustedGripStrength:F2}, Á¤±ÔÈ­={NormalizedGripStrength:F2}");
-        Debug.Log($"¼Óµµ: ¿øº»={handController.RightHandVelocity.magnitude:F2}, Á¤±ÔÈ­={NormalizedVelocity:F2}");
-        Debug.Log($"ÃÖÁ¾ Èû: {CurrentForce:F2} ({CurrentForceLevel})");
-        Debug.Log($"º¸¼®¿ë Èû: {GetGemProtectionForce():F1}");
-        Debug.Log($"¾ÈÀü ¿©ºÎ: {(IsSafeForce() ? "¾ÈÀü" : "À§Çè")}");
+        Debug.Log("=== í˜ ê³„ì‚° ê²°ê³¼ ===");
+        Debug.Log($"ì¥  ê°•ë„ ({gripType}): ì›ë³¸={RawGripStrength:F2}, ì¡°ì •={AdjustedGripStrength:F2}, ì •ê·œí™”={NormalizedGripStrength:F2}");
+        Debug.Log($"ì†ë„: ì›ë³¸={handController.RightHandVelocity.magnitude:F2}, ì •ê·œí™”={NormalizedVelocity:F2}");
+        Debug.Log($"ìµœì¢… í˜: {CurrentForce:F2} ({CurrentForceLevel})");
+        Debug.Log($"ë³´ì„ìš© í˜: {GetGemProtectionForce():F1}");
+        Debug.Log($"ì•ˆì „ ì—¬ë¶€: {(IsSafeForce() ? "ì•ˆì „" : "ìœ„í—˜")}");
 
         if (useCustomGripCalculator && gripCalculator != null)
         {
-            Debug.Log($"Ä¿½ºÅÒ ¹èÀ²: {customGripMultiplier:F1}");
-            Debug.Log($"GripCalculator ¹Î°¨µµ: {gripCalculator.sensitivity:F1}");
+            Debug.Log($"ì»¤ìŠ¤í…€ ë°°ìœ¨: {customGripMultiplier:F1}");
+            Debug.Log($"GripCalculator ë¯¼ê°ë„: {gripCalculator.sensitivity:F1}");
         }
         Debug.Log("==================");
     }
 
+    /// <summary>
+    /// í˜ ë ˆë²¨ì— ë”°ë¥¸ ëŒ€í‘œ ìƒ‰ìƒ(ë…¹/í™©/ì )
+    /// </summary>
     public Color GetForceColor()
     {
         switch (CurrentForceLevel)
         {
-            case ForceLevel.Weak:
-                return Color.green;
-            case ForceLevel.Medium:
-                return Color.yellow;
-            case ForceLevel.Strong:
-                return Color.red;
-            default:
-                return Color.white;
+            case ForceLevel.Weak: return Color.green;
+            case ForceLevel.Medium: return Color.yellow;
+            case ForceLevel.Strong: return Color.red;
+            default: return Color.white;
         }
     }
 
+    /// <summary>
+    /// UI í‘œê¸°ë¥¼ ìœ„í•œ ì„¤ëª… í…ìŠ¤íŠ¸(í¼ì„¼íŠ¸ ë²”ìœ„ëŠ” í˜„ì¬ threshold ê°’ê³¼ ì¼ì¹˜í•˜ë„ë¡ ìˆ˜ì • ê¶Œì¥)
+    /// </summary>
     public string GetForceDescription()
     {
         switch (CurrentForceLevel)
         {
-            case ForceLevel.Weak:
-                return "ºÎµå·¯¿î Ã¤±¼ (0-30%)";
-            case ForceLevel.Medium:
-                return "Àû´çÇÑ Ã¤±¼ (30-70%)";
-            case ForceLevel.Strong:
-                return "°­·ÂÇÑ Ã¤±¼ (70-100%)";
-            default:
-                return "¾Ë ¼ö ¾øÀ½";
+            case ForceLevel.Weak: return "ë¶€ë“œëŸ¬ìš´ ì±„êµ´ (0-30%)";
+            case ForceLevel.Medium: return "ì ë‹¹í•œ ì±„êµ´ (30-70%)";
+            case ForceLevel.Strong: return "ê°•ë ¥í•œ ì±„êµ´ (70-100%)";
+            default: return "ì•Œ ìˆ˜ ì—†ìŒ";
         }
     }
 
+    /// <summary>
+    /// í˜ ê´€ë ¨ ì¢…í•© ìƒíƒœ íŒ¨í‚·(ê²Œì´ì§€/ë¡œê·¸/UI ë°”ì¸ë”©ì— í¸ë¦¬)
+    /// </summary>
     public (float force, ForceLevel level, bool isSafe, string description) GetForceStatus()
     {
         return (CurrentForce, CurrentForceLevel, IsSafeForce(), GetForceDescription());
     }
 
+    /// <summary>
+    /// ëŸ°íƒ€ì„ì—ì„œ ì»¤ìŠ¤í…€ ì¥  ê°•ë„ ì‹œìŠ¤í…œ on/off
+    /// </summary>
     public void SetCustomGripEnabled(bool enabled)
     {
         useCustomGripCalculator = enabled;
-        Debug.Log($"Ä¿½ºÅÒ Áã´Â °­µµ °è»ê±â: {(enabled ? "È°¼ºÈ­" : "ºñÈ°¼ºÈ­")}");
+        Debug.Log($"ì»¤ìŠ¤í…€ ì¥ëŠ” ê°•ë„ ê³„ì‚°ê¸°: {(enabled ? "í™œì„±í™”" : "ë¹„í™œì„±í™”")}");
     }
 
+    /// <summary>
+    /// ì»¤ìŠ¤í…€ ì¥  ê°•ë„ ë°°ìœ¨(ì•ˆì „ ë²”ìœ„ ë‚´ í´ë¨í”„)
+    /// </summary>
     public void SetCustomGripMultiplier(float multiplier)
     {
         customGripMultiplier = Mathf.Clamp(multiplier, 0.1f, 3.0f);
-        Debug.Log($"Ä¿½ºÅÒ Áã´Â °­µµ ¹èÀ² ¼³Á¤: {customGripMultiplier:F1}");
+        Debug.Log($"ì»¤ìŠ¤í…€ ì¥ëŠ” ê°•ë„ ë°°ìœ¨ ì„¤ì •: {customGripMultiplier:F1}");
     }
 
-    [ContextMenu("¾àÇÑ Èû Å×½ºÆ® (30%)")]
+    // === ì¸ìŠ¤í™í„°ì—ì„œ ë°”ë¡œ í…ŒìŠ¤íŠ¸ ê°€ëŠ¥í•œ ì»¨í…ìŠ¤íŠ¸ ë©”ë‰´ ===
+    [ContextMenu("ì•½í•œ í˜ í…ŒìŠ¤íŠ¸ (30%)")]
     public void TestWeakForce()
     {
         CurrentForce = 0.3f;
         UpdateForceLevel();
-        Debug.Log($"Å×½ºÆ® Èû ¼³Á¤: {CurrentForce:F2} ({CurrentForceLevel})");
+        Debug.Log($"í…ŒìŠ¤íŠ¸ í˜ ì„¤ì •: {CurrentForce:F2} ({CurrentForceLevel})");
     }
 
-    [ContextMenu("º¸Åë Èû Å×½ºÆ® (70%)")]
+    [ContextMenu("ë³´í†µ í˜ í…ŒìŠ¤íŠ¸ (70%)")]
     public void TestMediumForce()
     {
         CurrentForce = 0.7f;
         UpdateForceLevel();
-        Debug.Log($"Å×½ºÆ® Èû ¼³Á¤: {CurrentForce:F2} ({CurrentForceLevel})");
+        Debug.Log($"í…ŒìŠ¤íŠ¸ í˜ ì„¤ì •: {CurrentForce:F2} ({CurrentForceLevel})");
     }
 
-    [ContextMenu("°­ÇÑ Èû Å×½ºÆ® (90%)")]
+    [ContextMenu("ê°•í•œ í˜ í…ŒìŠ¤íŠ¸ (90%)")]
     public void TestStrongForce()
     {
         CurrentForce = 0.9f;
         UpdateForceLevel();
-        Debug.Log($"Å×½ºÆ® Èû ¼³Á¤: {CurrentForce:F2} ({CurrentForceLevel})");
+        Debug.Log($"í…ŒìŠ¤íŠ¸ í˜ ì„¤ì •: {CurrentForce:F2} ({CurrentForceLevel})");
     }
 
-    [ContextMenu("ÇöÀç Èû »óÅÂ Ãâ·Â")]
+    [ContextMenu("í˜„ì¬ í˜ ìƒíƒœ ì¶œë ¥")]
     public void PrintCurrentForceStatus()
     {
         var status = GetForceStatus();
-        string gripSystem = useCustomGripCalculator && gripCalculator != null ? "Ä¿½ºÅÒ" : "±âº»";
+        string gripSystem = useCustomGripCalculator && gripCalculator != null ? "ì»¤ìŠ¤í…€" : "ê¸°ë³¸";
 
-        Debug.Log("=== ÇöÀç Èû »óÅÂ ===");
-        Debug.Log($"Áã´Â °­µµ ½Ã½ºÅÛ: {gripSystem}");
-        Debug.Log($"Èû: {status.force * 100f:F1}%");
-        Debug.Log($"·¹º§: {status.level}");
-        Debug.Log($"¾ÈÀü: {status.isSafe}");
-        Debug.Log($"¼³¸í: {status.description}");
-        Debug.Log($"¿øº» Áã´Â °­µµ: {RawGripStrength:F2}");
-        Debug.Log($"Á¶Á¤µÈ Áã´Â °­µµ: {AdjustedGripStrength:F2}");
-        Debug.Log($"¼Óµµ ±â¿©ºĞ: {NormalizedVelocity:F2}");
+        Debug.Log("=== í˜„ì¬ í˜ ìƒíƒœ ===");
+        Debug.Log($"ì¥ëŠ” ê°•ë„ ì‹œìŠ¤í…œ: {gripSystem}");
+        Debug.Log($"í˜: {status.force * 100f:F1}%");
+        Debug.Log($"ë ˆë²¨: {status.level}");
+        Debug.Log($"ì•ˆì „: {status.isSafe}");
+        Debug.Log($"ì„¤ëª…: {status.description}");
+        Debug.Log($"ì›ë³¸ ì¥ëŠ” ê°•ë„: {RawGripStrength:F2}");
+        Debug.Log($"ì¡°ì •ëœ ì¥ëŠ” ê°•ë„: {AdjustedGripStrength:F2}");
+        Debug.Log($"ì†ë„ ê¸°ì—¬ë¶„: {NormalizedVelocity:F2}");
         Debug.Log("===================");
     }
 
-    [ContextMenu("Áã´Â °­µµ ½Ã½ºÅÛ ÀüÈ¯")]
+    [ContextMenu("ì¥ëŠ” ê°•ë„ ì‹œìŠ¤í…œ ì „í™˜")]
     public void ToggleGripSystem()
     {
         SetCustomGripEnabled(!useCustomGripCalculator);
     }
 
+    /// <summary>
+    /// ì”¬ ë·°ì—ì„œ í˜ ê°’ ì‹œê°í™”(Gizmos) â€” ë””ë²„ê¹…/íŠœë‹ìš©
+    /// </summary>
     void OnDrawGizmos()
     {
         if (!Application.isPlaying || !showForceVisualization) return;
 
-        // Èû ·¹º§¿¡ µû¸¥ »ö»óÀ¸·Î ½Ã°¢È­
+        // í˜„ì¬ ë ˆë²¨ ìƒ‰ìœ¼ë¡œ í° êµ¬ì²´(í˜ í¬ê¸°ì— ë¹„ë¡€í•œ ë°˜ì§€ë¦„)
         Gizmos.color = GetForceColor();
-
-        // ÇöÀç ÈûÀ» ±¸Ã¼ Å©±â·Î Ç¥½Ã
         Vector3 visualPos = transform.position + Vector3.up * 2f;
         float sphereSize = 0.1f + (CurrentForce * 0.3f);
         Gizmos.DrawSphere(visualPos, sphereSize);
 
-        // Èû ·¹º§ ±¸°£À» ¼±À¸·Î Ç¥½Ã
+        // í•˜ë‹¨ ë°”(0~1 ìŠ¤ì¼€ì¼)ì™€ í˜„ì¬ ìœ„ì¹˜ ë§ˆì»¤
         Gizmos.color = Color.white;
         Vector3 barStart = visualPos + Vector3.left * 0.5f;
         Vector3 barEnd = visualPos + Vector3.right * 0.5f;
         Gizmos.DrawLine(barStart, barEnd);
 
-        // ÇöÀç Èû À§Ä¡ Ç¥½Ã
+        // í˜„ì¬ í˜ ìœ„ì¹˜
         Vector3 forcePos = Vector3.Lerp(barStart, barEnd, CurrentForce);
         Gizmos.color = GetForceColor();
         Gizmos.DrawSphere(forcePos, 0.05f);
 
-        // ¾àÇÔ/°­ÇÔ °æ°è¼± Ç¥½Ã
+        // ì•½í•¨/ê°•í•¨ ê²½ê³„ì„  ë§ˆì»¤
         Gizmos.color = Color.yellow;
         Vector3 weakBoundary = Vector3.Lerp(barStart, barEnd, weakForceThreshold);
         Vector3 strongBoundary = Vector3.Lerp(barStart, barEnd, strongForceThreshold);

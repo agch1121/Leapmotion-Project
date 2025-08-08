@@ -2,8 +2,8 @@ using UnityEngine;
 using Leap;
 
 /// <summary>
-/// 립모션 기반 양손 추적 시스템 - 강화된 망치 타격 감지
-/// 왼손: 끌 고정, 오른손: 망치 고정
+/// 강화된 HandController - 도구 탈부착 감지 기능 추가
+/// 기존 기능에 손가락 펼치기/웅크리기 감지 추가
 /// </summary>
 public class HandController : MonoBehaviour
 {
@@ -14,10 +14,17 @@ public class HandController : MonoBehaviour
     public bool useCustomGrabStrength = true;
     private GripCalculator gripCalculator;
 
-    [Header("채굴 동작 검출")]
-    public float maxVelocityForStrike = 2.0f; // 타격 속도 계산용 최댓값
-    public float minDownwardVelocity = 0.05f; // 최소 아래쪽 속도 (기존 0.2f에서 적당히 완화)
-    public float minTotalVelocity = 0.1f; // 최소 전체 속도 (기존 0.3f에서 적당히 완화)
+    [Header("타격 동작 감지")]
+    public float maxVelocityForStrike = 2.0f;
+    public float minDownwardVelocity = 0.2f;
+    public float minTotalVelocity = 0.3f;
+
+    [Header("도구 탈부착 감지")]
+    [Range(0.1f, 1.0f)]
+    public float handOpenThreshold = 0.8f;     // 손 펼치기 감지 임계값
+    [Range(0.1f, 1.0f)]
+    public float handCloseThreshold = 0.3f;    // 손 웅크리기 감지 임계값
+    public float stateChangeDelay = 0.5f;      // 상태 변경 지연 시간 (오인식 방지)
 
     [Header("테스트 모드")]
     public bool enableTestMode = true;
@@ -26,6 +33,7 @@ public class HandController : MonoBehaviour
     public KeyCode leftHandLeftKey = KeyCode.A;
     public KeyCode leftHandRightKey = KeyCode.D;
     public KeyCode hammerStrikeKey = KeyCode.Space;
+    public KeyCode toggleToolsKey = KeyCode.T;  // 도구 토글 테스트키
 
     [Header("립모션 좌표 변환")]
     public bool useRawCoordinates = true;
@@ -39,9 +47,9 @@ public class HandController : MonoBehaviour
     public float smoothSpeed = 10f;
 
     [Header("채굴 설정")]
-    public float strikeDetectionThreshold = 0.3f;
+    public float strikeDetectionThreshold = 0.5f;
     public float maxStrikeDistance = 2.0f;
-    public float velocityThreshold = 0.03f;
+    public float velocityThreshold = 0.1f;
 
     // 립모션 컨트롤러
     private Controller leapController;
@@ -54,6 +62,22 @@ public class HandController : MonoBehaviour
     public float RightHandGrabStrength { get; private set; }
     public Vector3 RightHandVelocity { get; private set; }
 
+    // 도구 상태 관리
+    public enum ToolState
+    {
+        Attached,    // 도구 착용
+        Detached     // 맨손
+    }
+
+    [Header("현재 도구 상태")]
+    [SerializeField] private ToolState currentToolState = ToolState.Attached;
+    public ToolState CurrentToolState => currentToolState;
+
+    // 손가락 상태 추적
+    private float lastStateChangeTime = 0f;
+    private bool pendingStateChange = false;
+    private ToolState pendingToolState;
+
     // 부드러운 움직임을 위한 변수
     private Vector3 targetLeftPos;
     private Vector3 targetRightPos;
@@ -65,15 +89,20 @@ public class HandController : MonoBehaviour
     private bool wasGripping = false;
 
     // 이벤트
-    public System.Action<Vector3, Vector3, float> OnHammerStrike;
+    public System.Action<Vector3, Vector3, float> OnHammerStrike; // (hammerPos, chiselTarget, force)
+    public System.Action<ToolState> OnToolStateChanged;  // 새로운 이벤트
 
     // 테스트 모드 변수
     private Vector3 testLeftHandPos = new Vector3(-0.5f, 1.2f, 0f);
     private Vector3 testRightHandPos = new Vector3(0.5f, 1.2f, 0f);
+    private bool testToolsEnabled = true;
 
     // 디버그용
     private float lastDebugTime = 0f;
     private bool hasReceivedValidData = false;
+
+    // ★ 끌 타겟 좌표 제공용
+    [SerializeField] private ToolSystem toolSystem;
 
     void Start()
     {
@@ -82,7 +111,7 @@ public class HandController : MonoBehaviour
 
     void InitializeHandController()
     {
-        Debug.Log("=== HandController 초기화 시작 ===");
+        Debug.Log("=== 강화된 HandController 초기화 시작 ===");
 
         InitializeGripCalculator();
 
@@ -123,6 +152,8 @@ public class HandController : MonoBehaviour
         targetRightRot = Quaternion.identity;
 
         UpdateHandVisuals();
+
+        Debug.Log("=== 강화된 HandController 초기화 완료 ===");
     }
 
     void InitializeGripCalculator()
@@ -162,6 +193,9 @@ public class HandController : MonoBehaviour
 
         // 부드러운 보간 적용
         ApplySmoothing();
+
+        // 도구 상태 감지 및 업데이트
+        UpdateToolState();
 
         // 타격 감지 및 시각화 업데이트
         DetectHammerStrike();
@@ -333,6 +367,136 @@ public class HandController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 도구 상태 감지 및 업데이트 (새로운 기능)
+    /// </summary>
+    void UpdateToolState()
+    {
+        bool shouldDetachTools = DetectHandOpen();
+        bool shouldAttachTools = DetectHandClosed();
+
+        // 상태 변경 로직
+        if (shouldDetachTools && currentToolState == ToolState.Attached)
+        {
+            if (!pendingStateChange)
+            {
+                pendingStateChange = true;
+                pendingToolState = ToolState.Detached;
+                lastStateChangeTime = Time.time;
+            }
+            else if (pendingToolState == ToolState.Detached &&
+                     Time.time - lastStateChangeTime >= stateChangeDelay)
+            {
+                ChangeToolState(ToolState.Detached);
+                pendingStateChange = false;
+            }
+        }
+        else if (shouldAttachTools && currentToolState == ToolState.Detached)
+        {
+            if (!pendingStateChange)
+            {
+                pendingStateChange = true;
+                pendingToolState = ToolState.Attached;
+                lastStateChangeTime = Time.time;
+            }
+            else if (pendingToolState == ToolState.Attached &&
+                     Time.time - lastStateChangeTime >= stateChangeDelay)
+            {
+                ChangeToolState(ToolState.Attached);
+                pendingStateChange = false;
+            }
+        }
+        else if (shouldDetachTools && pendingToolState == ToolState.Attached ||
+                 shouldAttachTools && pendingToolState == ToolState.Detached)
+        {
+            // 반대 동작이 감지되면 대기 중인 상태 변경 취소
+            pendingStateChange = false;
+        }
+    }
+
+    /// <summary>
+    /// 손 펼치기 감지 (모든 손가락이 펴져 있는지)
+    /// </summary>
+    bool DetectHandOpen()
+    {
+        if (!useLeapMotion || leapController == null)
+        {
+            // 테스트 모드에서는 키보드 입력으로 처리
+            return false;
+        }
+
+        Frame frame = leapController.Frame();
+        Hand rightHand = frame.Hands.Find(h => h.IsRight);
+
+        if (rightHand == null) return false;
+
+        // 모든 손가락이 펴져 있는지 확인
+        int extendedFingers = 0;
+        foreach (Finger finger in rightHand.fingers)
+        {
+            if (finger.IsExtended)
+            {
+                extendedFingers++;
+            }
+        }
+
+        // 5개 손가락 모두 펴져 있고, GrabStrength가 낮은 경우
+        bool allFingersExtended = extendedFingers >= 4; // 4개 이상 (엄지 제외 가능)
+        bool lowGrabStrength = RightHandGrabStrength < (1f - handOpenThreshold);
+
+        return allFingersExtended && lowGrabStrength;
+    }
+
+    /// <summary>
+    /// 손 웅크리기 감지 (주먹 쥐기)
+    /// </summary>
+    bool DetectHandClosed()
+    {
+        if (!useLeapMotion || leapController == null)
+        {
+            // 테스트 모드에서는 키보드 입력으로 처리
+            return false;
+        }
+
+        Frame frame = leapController.Frame();
+        Hand rightHand = frame.Hands.Find(h => h.IsRight);
+
+        if (rightHand == null) return false;
+
+        // 대부분의 손가락이 접혀 있는지 확인
+        int extendedFingers = 0;
+        foreach (Finger finger in rightHand.fingers)
+        {
+            if (finger.IsExtended)
+            {
+                extendedFingers++;
+            }
+        }
+
+        // 1개 이하 손가락만 펴져 있고, GrabStrength가 높은 경우
+        bool mostFingersfolded = extendedFingers <= 1;
+        bool highGrabStrength = RightHandGrabStrength > handCloseThreshold;
+
+        return mostFingersfolded && highGrabStrength;
+    }
+
+    /// <summary>
+    /// 도구 상태 변경
+    /// </summary>
+    void ChangeToolState(ToolState newState)
+    {
+        if (currentToolState != newState)
+        {
+            ToolState previousState = currentToolState;
+            currentToolState = newState;
+
+            Debug.Log($"도구 상태 변경: {previousState} → {newState}");
+
+            // 이벤트 발생
+            OnToolStateChanged?.Invoke(newState);
+        }
+    }
+
     void UpdateTestModeHands()
     {
         Vector3 leftMove = Vector3.zero;
@@ -358,146 +522,88 @@ public class HandController : MonoBehaviour
             RightHandGrabStrength = 0f;
             RightHandVelocity = Vector3.zero;
         }
+
+        // 테스트 도구 토글
+        if (Input.GetKeyDown(toggleToolsKey))
+        {
+            testToolsEnabled = !testToolsEnabled;
+            ChangeToolState(testToolsEnabled ? ToolState.Attached : ToolState.Detached);
+        }
     }
-    public bool enableDetailedDebug = true;
-    public bool forceEnableStrike = false; // 강제 채굴 활성화 (테스트용)
+
     void DetectHammerStrike()
     {
+        // 도구가 탈착된 상태면 타격 감지 안함
+        if (currentToolState == ToolState.Detached)
+        {
+            IsStrikeDetected = false;
+            wasGripping = false;
+            return;
+        }
+
         IsStrikeDetected = false;
 
-        // 모든 조건을 개별적으로 체크하고 로그 출력
         bool isGripping = RightHandGrabStrength > strikeDetectionThreshold;
         bool hasVelocity = RightHandVelocity.magnitude > velocityThreshold;
         float distance = Vector3.Distance(LeftHandPosition, RightHandPosition);
         bool isInRange = distance <= maxStrikeDistance;
 
+        // 새로 추가된 조건들
         bool hasDownwardMotion = CheckDownward();
         bool hasSwingMotion = CheckSwing();
         bool meetsMinimumForce = CheckMinForce();
 
-        // 상세한 디버그 로그
-        if (enableDetailedDebug && isGripping)
-        {
-            Debug.Log($"=== 채굴 조건 체크 ===");
-            Debug.Log($"쥐는 강도: {RightHandGrabStrength:F3} > {strikeDetectionThreshold} = {isGripping}");
-            Debug.Log($"속도: {RightHandVelocity.magnitude:F3} > {velocityThreshold} = {hasVelocity}");
-            Debug.Log($"거리: {distance:F2} <= {maxStrikeDistance} = {isInRange}");
-            Debug.Log($"아래쪽 움직임: {-RightHandVelocity.y:F3} > {minDownwardVelocity} = {hasDownwardMotion}");
-            Debug.Log($"휘두르기: {hasSwingMotion}");
-            Debug.Log($"최소 힘: {CalcStrikeForce():F3} > 0.03 = {meetsMinimumForce}");
-            Debug.Log($"이전 쥐기 상태: {wasGripping}");
-        }
-
-        // 강제 모드 또는 기존 조건
-        bool shouldStrike = false;
-
-        if (forceEnableStrike)
-        {
-            // 강제 모드: 쥐기만 하면 채굴
-            shouldStrike = !wasGripping && isGripping;
-            if (enableDetailedDebug && shouldStrike)
-            {
-                Debug.Log("강제 모드로 채굴 실행!");
-            }
-        }
-        else
-        {
-            // 매우 완화된 조건들
-            bool basicCondition = !wasGripping && isGripping && isInRange;
-
-            // 속도 조건을 더욱 완화 - 하나라도 만족하면 OK
-            bool anyMotion = hasVelocity || hasDownwardMotion || hasSwingMotion;
-
-            // 힘 조건도 더 완화
-            bool hasAnyForce = RightHandGrabStrength > 0.1f; // 매우 낮은 기준
-
-            shouldStrike = basicCondition && (anyMotion || hasAnyForce);
-
-            if (enableDetailedDebug && basicCondition)
-            {
-                Debug.Log($"기본 조건 만족, 추가 조건: 움직임={anyMotion}, 힘={hasAnyForce}");
-            }
-        }
-
-        if (shouldStrike)
+        // 강화된 타격 감지 조건
+        if (!wasGripping && isGripping && hasVelocity && isInRange &&
+            hasDownwardMotion && hasSwingMotion && meetsMinimumForce)
         {
             IsStrikeDetected = true;
-            ExecuteStrike();
+
+            // 실제 망치 위치와 끌 타겟 위치 분리 전달 (핵심 수정)
+            Vector3 actualHammerPosition = RightHandPosition;
+            Vector3 chiselTargetPosition = GetChiselTargetPoint();
+            Vector3 strikeDirection = (chiselTargetPosition - actualHammerPosition).normalized;
+
+            // 타격 힘 강도 계산 (속도 + 쥐는 강도)
+            float strikeForce = CalcStrikeForce();
+
+            // 디버그 로그
+            Debug.Log($"=== 타격 감지 디버그 ===");
+            Debug.Log($"실제 망치 위치: {actualHammerPosition}");
+            Debug.Log($"끌 타겟 위치: {chiselTargetPosition}");
+            Debug.Log($"거리 계산용: 망치={actualHammerPosition}, 타겟={chiselTargetPosition}");
+            Debug.Log("==================");
+
+            // 이벤트: (hammerPos, chiselTarget, force)
+            OnHammerStrike?.Invoke(actualHammerPosition, chiselTargetPosition, strikeForce);
+
+            Debug.Log($"망치 타격 감지! 망치위치: {actualHammerPosition:F2}, 타겟위치: {chiselTargetPosition:F2}");
         }
 
         wasGripping = isGripping;
     }
 
-    void ExecuteStrike()
-    {
-        Vector3 strikePosition = GetChiselTargetPoint();
-        Vector3 strikeDirection = (strikePosition - RightHandPosition).normalized;
-        float strikeForce = CalcStrikeForce();
-
-        // 최소 힘이라도 보장
-        if (strikeForce < 0.1f)
-        {
-            strikeForce = 0.1f;
-        }
-
-        Debug.Log($"채굴 실행! 힘: {strikeForce:F3}, 위치: {strikePosition}");
-
-        OnHammerStrike?.Invoke(strikePosition, strikeDirection, strikeForce);
-    }
-
     bool CheckDownward()
     {
         float downwardVelocity = -RightHandVelocity.y;
-        bool result = downwardVelocity > 0.02f; // 매우 작은 값
-
-        if (enableDetailedDebug)
-        {
-            Debug.Log($"아래쪽 속도: {downwardVelocity:F3} > 0.02 = {result}");
-        }
-
-        return result;
+        return downwardVelocity > minDownwardVelocity;
     }
 
     bool CheckSwing()
     {
         float totalSpeed = RightHandVelocity.magnitude;
-
-        if (totalSpeed < minTotalVelocity) // 0.1f
-        {
-            if (enableDetailedDebug)
-            {
-                Debug.Log($"총 속도 부족: {totalSpeed:F3} < {minTotalVelocity}");
-            }
-            return false;
-        }
-
-        // 아래쪽 움직임 비율 계산
         float downwardSpeed = Mathf.Abs(RightHandVelocity.y);
-        float downwardRatio = totalSpeed > 0.01f ? downwardSpeed / totalSpeed : 0f;
 
-        // 아래비율 조건을 5%로 대폭 완화 (기존 20%에서)
-        bool result = downwardRatio > 0.05f; // 기존 0.2f에서 0.05f로 완화
+        if (totalSpeed < minTotalVelocity) return false;
 
-        if (enableDetailedDebug)
-        {
-            Debug.Log($"휘두르기 체크: 총속도={totalSpeed:F3}, 아래비율={downwardRatio:F3} > 0.05 = {result}");
-        }
-
-        return result;
+        float downwardRatio = downwardSpeed / totalSpeed;
+        return downwardRatio > 0.3f;
     }
-
 
     bool CheckMinForce()
     {
         float calculatedForce = CalcStrikeForce();
-        bool result = calculatedForce > 0.01f; // 매우 낮은 기준
-
-        if (enableDetailedDebug)
-        {
-            Debug.Log($"계산된 힘: {calculatedForce:F3} > 0.01 = {result}");
-        }
-
-        return result;
+        return calculatedForce > 0.1f;
     }
 
     float CalcStrikeForce()
@@ -531,6 +637,13 @@ public class HandController : MonoBehaviour
 
     public Vector3 GetChiselTargetPoint()
     {
+        // 우선 ToolSystem에서 끌 팁 좌표를 받아 사용 (정확도 ↑)
+        if (toolSystem != null)
+        {
+            return toolSystem.GetChiselTargetPosition();
+        }
+
+        // 폴백: 왼손 진행방향으로 레이캐스트
         Vector3 chiselForward = LeftHandRotation * Vector3.forward;
         Ray chiselRay = new Ray(LeftHandPosition, chiselForward);
 
@@ -554,6 +667,7 @@ public class HandController : MonoBehaviour
         Debug.Log($"[HandController] 상태: {status}");
         Debug.Log($"왼손: {LeftHandPosition:F2}, 오른손: {RightHandPosition:F2}");
         Debug.Log($"쥐는 강도 ({gripType}): {RightHandGrabStrength:F2}, 속도: {RightHandVelocity.magnitude:F2}");
+        Debug.Log($"도구 상태: {currentToolState}");
 
         if (useCustomGrabStrength && gripCalculator != null)
         {
@@ -587,6 +701,14 @@ public class HandController : MonoBehaviour
         return "기본 Leap Motion";
     }
 
+    /// <summary>
+    /// 수동으로 도구 상태 설정 (테스트용)
+    /// </summary>
+    public void SetToolState(ToolState state)
+    {
+        ChangeToolState(state);
+    }
+
     [ContextMenu("쥐는 강도 시스템 전환")]
     public void ToggleGripSystem()
     {
@@ -603,7 +725,16 @@ public class HandController : MonoBehaviour
         Debug.Log($"쥐는 강도: {RightHandGrabStrength:F2}");
         Debug.Log($"손 속도: {RightHandVelocity.magnitude:F2}");
         Debug.Log($"타격 감지: {IsStrikeDetected}");
+        Debug.Log($"도구 상태: {currentToolState}");
         Debug.Log("===================");
+    }
+
+    [ContextMenu("도구 상태 토글")]
+    public void ToggleToolState()
+    {
+        ToolState newState = currentToolState == ToolState.Attached ?
+                            ToolState.Detached : ToolState.Attached;
+        ChangeToolState(newState);
     }
 
     void OnDrawGizmos()
@@ -615,7 +746,7 @@ public class HandController : MonoBehaviour
         Gizmos.DrawWireSphere(LeftHandPosition, 0.05f);
 
         // 오른손 (망치) - 빨간색
-        Gizmos.color = Color.red;
+        Gizmos.color = currentToolState == ToolState.Attached ? Color.red : Color.gray;
         Gizmos.DrawWireSphere(RightHandPosition, 0.05f);
 
         // 타격 범위 - 노란색
@@ -627,12 +758,24 @@ public class HandController : MonoBehaviour
         Vector3 chiselForward = LeftHandRotation * Vector3.forward;
         Gizmos.DrawRay(LeftHandPosition, chiselForward * 0.5f);
 
-        // 쥐는 강도 시각화 - 주황색 (강도에 따라 크기 변함)
+        // 쥐는 강도 시각화 - 자홍색 (강도에 따라 크기 변함)
         if (useCustomGrabStrength)
         {
             Gizmos.color = Color.magenta;
             float gripSize = 0.02f + (RightHandGrabStrength * 0.08f);
             Gizmos.DrawSphere(RightHandPosition + Vector3.up * 0.1f, gripSize);
         }
+
+        // 도구 상태 표시
+        if (currentToolState == ToolState.Detached)
+        {
+            Gizmos.color = Color.white;
+            Gizmos.DrawWireCube(RightHandPosition + Vector3.up * 0.15f, Vector3.one * 0.05f);
+        }
+    }
+
+    void OnDestroy()
+    {
+        // 이벤트 구독 해제는 다른 시스템에서 처리
     }
 }
