@@ -3500,7 +3500,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   totalMass: 100
-  jointBreakForce: 20
+  jointBreakForce: 50
   anchored: 1
   freezeConnectedChunks: 0
   startAsleep: 1
@@ -3541,10 +3541,10 @@ MonoBehaviour:
   gems:
   - gemObject: {fileID: 8427302091761681971}
     gemName: "\uC5D0\uBA54\uB784\uB4DC"
-    damageThreshold: 15
-    protectionRadius: 1
-    freeHitCount: 1
-    currentCondition: 100
+    damageThreshold: 0
+    protectionRadius: 0
+    freeHitCount: 0
+    currentCondition: 0
     perfectMaterial: {fileID: 0}
     damagedMaterial: {fileID: 0}
     heavilyDamagedMaterial: {fileID: 0}
@@ -3570,7 +3570,7 @@ MonoBehaviour:
   currentActiveChunks: 0
   currentRemovedChunks: 0
   miningProgress: 0
-  targetChunkCount: 40
+  targetChunkCount: 100
   useCustomTarget: 1
   enableDebugLogs: 1
   enableProgressDebug: 1

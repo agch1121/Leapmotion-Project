@@ -718,36 +718,6 @@ MonoBehaviour:
   minimumThreshold: 0.1
   enableDebugLogs: 0
   showFingerValues: 0
---- !u!114 &280669656
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 280669636}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5de81e7a942a56047a550ebd1e70f20a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  perfectDistance: 0.1
-  goodDistance: 0.2
-  allowedDistance: 0.3
-  perfectScore: 100
-  goodScore: 70
-  allowedScore: 40
-  failScore: 10
-  accuracyFeedbackPrefab: {fileID: 0}
-  perfectMaterial: {fileID: 0}
-  goodMaterial: {fileID: 0}
-  allowedMaterial: {fileID: 0}
-  failMaterial: {fileID: 0}
-  perfectHitSound: {fileID: 0}
-  goodHitSound: {fileID: 0}
-  allowedHitSound: {fileID: 0}
-  failHitSound: {fileID: 0}
-  enableDebugLogs: 1
-  showAccuracyGizmos: 1
 --- !u!1 &301408362
 GameObject:
   m_ObjectHideFlags: 0
@@ -7927,64 +7897,6 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 3546951034823482766, guid: a58c53c17c01b7747bb3d08b905015b3, type: 3}
   m_PrefabInstance: {fileID: 9195714309048478269}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &1020288325
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1020288327}
-  - component: {fileID: 1020288326}
-  m_Layer: 0
-  m_Name: Accurasy Manager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1020288326
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1020288325}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a8a8aa06d329a064b82abdc06f2f323f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  perfectRadius: 0.05
-  goodRadius: 0.1
-  allowedRadius: 0.15
-  hammerTipRadius: 0.04
-  perfectMaterial: {fileID: 0}
-  goodMaterial: {fileID: 0}
-  allowedMaterial: {fileID: 0}
-  hammerMaterial: {fileID: 0}
-  perfectScore: 100
-  goodScore: 70
-  allowedScore: 40
-  failScore: 0
-  enableDebugLogs: 1
-  showGizmos: 1
---- !u!4 &1020288327
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1020288325}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.8228072, y: 2.1807532, z: -0.41798756}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1041012218
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -10917,67 +10829,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2112285528}
   m_CullTransparentMesh: 1
---- !u!1 &2117648166
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2117648168}
-  - component: {fileID: 2117648167}
-  m_Layer: 0
-  m_Name: Test
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &2117648167
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2117648166}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 28dde633075213940a067fb1bfde43ec, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  enableHybridTest: 0
-  overrideLeapMotion: 0
-  chiselUpKey: 119
-  chiselDownKey: 115
-  chiselLeftKey: 97
-  chiselRightKey: 100
-  chiselForwardKey: 113
-  chiselBackKey: 101
-  chiselMoveSpeed: 2
-  useMouseForHammer: 1
-  mouseHeightOffset: 1.2
-  mouseSensitivity: 1
-  hammerDistanceFromCamera: 3
-  strikeKey: 32
-  alternativeStrikeKey: 306
-  showMouseProjection: 1
-  mouseProjectionSphere: {fileID: 0}
---- !u!4 &2117648168
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2117648166}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.067449436, y: 1.2167691, z: 0.2662857}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2128325054
 GameObject:
   m_ObjectHideFlags: 0
@@ -11230,16 +11081,12 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 1946654924954338166, guid: 011b0377e479ed94f9ca10f051904c94, type: 3}
-      propertyPath: m_Icon
-      value: 
-      objectReference: {fileID: 5132851093641282708, guid: 0000000000000000d000000000000000, type: 0}
-    - target: {fileID: 1946654924954338166, guid: 011b0377e479ed94f9ca10f051904c94, type: 3}
       propertyPath: m_Name
       value: Ore Spawn Pos
       objectReference: {fileID: 0}
     - target: {fileID: 7685499411889505475, guid: 011b0377e479ed94f9ca10f051904c94, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.126
+      value: 0.422
       objectReference: {fileID: 0}
     - target: {fileID: 7685499411889505475, guid: 011b0377e479ed94f9ca10f051904c94, type: 3}
       propertyPath: m_LocalPosition.y
@@ -11247,7 +11094,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7685499411889505475, guid: 011b0377e479ed94f9ca10f051904c94, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 1.085
+      value: 1.892
       objectReference: {fileID: 0}
     - target: {fileID: 7685499411889505475, guid: 011b0377e479ed94f9ca10f051904c94, type: 3}
       propertyPath: m_LocalRotation.w
@@ -11842,10 +11689,6 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2414605277370044787, guid: a62800902f317f14abadb0d43bfaca8f, type: 3}
-      propertyPath: chiselTransform
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 2414605277370044787, guid: a62800902f317f14abadb0d43bfaca8f, type: 3}
       propertyPath: hammerSpawnPoint
       value: 
       objectReference: {fileID: 1771485437}
@@ -11996,9 +11839,6 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 912116649066935240, guid: a62800902f317f14abadb0d43bfaca8f, type: 3}
       insertIndex: -1
       addedObject: {fileID: 280669646}
-    - targetCorrespondingSourceObject: {fileID: 912116649066935240, guid: a62800902f317f14abadb0d43bfaca8f, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 280669656}
   m_SourcePrefab: {fileID: 100100000, guid: a62800902f317f14abadb0d43bfaca8f, type: 3}
 --- !u!1001 &7220373556125805472
 PrefabInstance:
@@ -13319,7 +13159,6 @@ SceneRoots:
   - {fileID: 994634568}
   - {fileID: 735347643}
   - {fileID: 6620518089701082777}
-  - {fileID: 1020288327}
   - {fileID: 887198358}
   - {fileID: 3191926672642492777}
   - {fileID: 458847486}
@@ -13347,4 +13186,3 @@ SceneRoots:
   - {fileID: 1177079393}
   - {fileID: 1534831903}
   - {fileID: 1451390608}
-  - {fileID: 2117648168}
