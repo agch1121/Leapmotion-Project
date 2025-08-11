@@ -14,9 +14,9 @@ GameObject:
   - component: {fileID: 5776736696949720093}
   - component: {fileID: 8798057026313672529}
   - component: {fileID: 6887836253207143255}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk6
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -166,9 +166,9 @@ GameObject:
   - component: {fileID: 9149304877401270694}
   - component: {fileID: 2498822879517009277}
   - component: {fileID: 5915573569529645165}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk40
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -318,9 +318,9 @@ GameObject:
   - component: {fileID: 2155974598936539450}
   - component: {fileID: 7049524859125476420}
   - component: {fileID: 2784481950144592667}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk35
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -470,9 +470,9 @@ GameObject:
   - component: {fileID: 674245252097062347}
   - component: {fileID: 8197749123339016286}
   - component: {fileID: 3773640902973768261}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk12
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -622,9 +622,9 @@ GameObject:
   - component: {fileID: 3343881666195361177}
   - component: {fileID: 3471247127654815198}
   - component: {fileID: 1393861344871826100}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk41
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -774,9 +774,9 @@ GameObject:
   - component: {fileID: 335954013482218016}
   - component: {fileID: 8350819621287826267}
   - component: {fileID: 4484304698440613576}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk13
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -926,9 +926,9 @@ GameObject:
   - component: {fileID: 476270863396896796}
   - component: {fileID: 2010417326458650175}
   - component: {fileID: 5174597773666189639}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk33
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1078,9 +1078,9 @@ GameObject:
   - component: {fileID: 4178148634979484657}
   - component: {fileID: 1063239576356687767}
   - component: {fileID: 890821557430758605}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk7
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1230,9 +1230,9 @@ GameObject:
   - component: {fileID: 782511173242985561}
   - component: {fileID: 2317250140841788872}
   - component: {fileID: 2801775213810694631}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk39
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1382,9 +1382,9 @@ GameObject:
   - component: {fileID: 4368725799001404365}
   - component: {fileID: 6814752161920127682}
   - component: {fileID: 697634815798356872}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk14
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1534,9 +1534,9 @@ GameObject:
   - component: {fileID: 4458888033710797942}
   - component: {fileID: 4649966077151973247}
   - component: {fileID: 157405854035067453}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk28
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1686,9 +1686,9 @@ GameObject:
   - component: {fileID: 3211179805182765379}
   - component: {fileID: 8066076316095385496}
   - component: {fileID: 6848126593926192585}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk3
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1838,9 +1838,9 @@ GameObject:
   - component: {fileID: 7625595602060777405}
   - component: {fileID: 7418358033685307219}
   - component: {fileID: 2569882746812351881}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk20
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1990,9 +1990,9 @@ GameObject:
   - component: {fileID: 2227763570247856285}
   - component: {fileID: 5745649702325223142}
   - component: {fileID: 3212635269973616342}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk38
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -2142,9 +2142,9 @@ GameObject:
   - component: {fileID: 2456358351361615324}
   - component: {fileID: 4231054229601459135}
   - component: {fileID: 840340541849366057}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk8
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -2294,9 +2294,9 @@ GameObject:
   - component: {fileID: 6398392583286529580}
   - component: {fileID: 4011297694849211622}
   - component: {fileID: 2908063033499303986}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk5
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -2446,9 +2446,9 @@ GameObject:
   - component: {fileID: 8221484579887510240}
   - component: {fileID: 7486959172825859967}
   - component: {fileID: 1056156878589777618}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk11
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -2598,9 +2598,9 @@ GameObject:
   - component: {fileID: 910652572252140212}
   - component: {fileID: 7227877448188322644}
   - component: {fileID: 1561152884962550676}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk19
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -2750,9 +2750,9 @@ GameObject:
   - component: {fileID: 1461092672260649483}
   - component: {fileID: 1825672774994096906}
   - component: {fileID: 8015277253796662836}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk31
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -2902,9 +2902,9 @@ GameObject:
   - component: {fileID: 8552434714355751105}
   - component: {fileID: 3729659870828607272}
   - component: {fileID: 2400699792327776646}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk23
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -3054,9 +3054,9 @@ GameObject:
   - component: {fileID: 903362353004394733}
   - component: {fileID: 4739059691626250160}
   - component: {fileID: 1699534629726108018}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk30
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -3206,9 +3206,9 @@ GameObject:
   - component: {fileID: 6168922474088267019}
   - component: {fileID: 9138685189193564003}
   - component: {fileID: 8573080415001941190}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk46
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -3541,9 +3541,9 @@ MonoBehaviour:
   gems:
   - gemObject: {fileID: 8427302091761681971}
     gemName: "\uC5D0\uBA54\uB784\uB4DC"
-    damageThreshold: 0
-    protectionRadius: 0
-    freeHitCount: 0
+    damageThreshold: 15
+    protectionRadius: 0.5
+    freeHitCount: 1
     currentCondition: 0
     perfectMaterial: {fileID: 0}
     damagedMaterial: {fileID: 0}
@@ -3570,7 +3570,7 @@ MonoBehaviour:
   currentActiveChunks: 0
   currentRemovedChunks: 0
   miningProgress: 0
-  targetChunkCount: 100
+  targetChunkCount: 50
   useCustomTarget: 1
   enableDebugLogs: 1
   enableProgressDebug: 1
@@ -3633,9 +3633,9 @@ GameObject:
   - component: {fileID: 1281883944472249827}
   - component: {fileID: 6511544449678756309}
   - component: {fileID: 2745868284657296661}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk29
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -3785,9 +3785,9 @@ GameObject:
   - component: {fileID: 2840473881174501152}
   - component: {fileID: 5987087870278834393}
   - component: {fileID: 1084683306695450654}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk27
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -3937,9 +3937,9 @@ GameObject:
   - component: {fileID: 4850605540569120273}
   - component: {fileID: 2424196087200399299}
   - component: {fileID: 1616199796004247692}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk0
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -4089,9 +4089,9 @@ GameObject:
   - component: {fileID: 2934657943260308032}
   - component: {fileID: 565405450262790653}
   - component: {fileID: 1142696098598142613}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk44
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -4241,9 +4241,9 @@ GameObject:
   - component: {fileID: 964230002265445102}
   - component: {fileID: 1585140085951402144}
   - component: {fileID: 9091901769403439220}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk9
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -4393,9 +4393,9 @@ GameObject:
   - component: {fileID: 7763486816088941054}
   - component: {fileID: 1793657793653456694}
   - component: {fileID: 1693199041644205966}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk32
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -4545,9 +4545,9 @@ GameObject:
   - component: {fileID: 4159953144577361733}
   - component: {fileID: 3994854585504596718}
   - component: {fileID: 1438638550845511863}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk48
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -4697,9 +4697,9 @@ GameObject:
   - component: {fileID: 112925287467417534}
   - component: {fileID: 5290030612103051039}
   - component: {fileID: 6144742705466072438}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk43
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -4849,9 +4849,9 @@ GameObject:
   - component: {fileID: 4750693981522500833}
   - component: {fileID: 1949803286582310280}
   - component: {fileID: 1817859472207677788}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk4
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -5001,9 +5001,9 @@ GameObject:
   - component: {fileID: 6921188402858687379}
   - component: {fileID: 3972741919111465945}
   - component: {fileID: 1221940706457188471}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk2
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -5153,9 +5153,9 @@ GameObject:
   - component: {fileID: 442198858997146135}
   - component: {fileID: 5244582771181928207}
   - component: {fileID: 5899636656163468145}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk17
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -5305,9 +5305,9 @@ GameObject:
   - component: {fileID: 8352393320708192818}
   - component: {fileID: 4327765481225456706}
   - component: {fileID: 3294617493148631816}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk1
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -5457,9 +5457,9 @@ GameObject:
   - component: {fileID: 4761589903523055058}
   - component: {fileID: 7876781248057130080}
   - component: {fileID: 77531607904570867}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk42
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -5609,9 +5609,9 @@ GameObject:
   - component: {fileID: 3818229880062082764}
   - component: {fileID: 8104771185988523567}
   - component: {fileID: 4185386606944515297}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk37
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -5761,9 +5761,9 @@ GameObject:
   - component: {fileID: 8220258965826296917}
   - component: {fileID: 8033858233990919638}
   - component: {fileID: 8604148363918332053}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk22
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -5913,9 +5913,9 @@ GameObject:
   - component: {fileID: 737558967300903740}
   - component: {fileID: 6656088223745595111}
   - component: {fileID: 3638719122446037123}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk25
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -6065,9 +6065,9 @@ GameObject:
   - component: {fileID: 7816353371486286646}
   - component: {fileID: 5107877071309049570}
   - component: {fileID: 1296470978856253494}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk45
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -6217,9 +6217,9 @@ GameObject:
   - component: {fileID: 6070540313359900998}
   - component: {fileID: 5648673570665257851}
   - component: {fileID: 2061562498332556719}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk34
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -6369,9 +6369,9 @@ GameObject:
   - component: {fileID: 3431905716125813448}
   - component: {fileID: 2668906409943744188}
   - component: {fileID: 7808857297561664671}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk10
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -6521,9 +6521,9 @@ GameObject:
   - component: {fileID: 7774146479232596226}
   - component: {fileID: 7425711034465511224}
   - component: {fileID: 5735768302766383417}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk16
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -6673,9 +6673,9 @@ GameObject:
   - component: {fileID: 3600125834608271121}
   - component: {fileID: 242013111440911915}
   - component: {fileID: 153331253978598004}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk21
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -6825,9 +6825,9 @@ GameObject:
   - component: {fileID: 6056052133858418151}
   - component: {fileID: 9193301508132349847}
   - component: {fileID: 9120971365007787697}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk49
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -6977,9 +6977,9 @@ GameObject:
   - component: {fileID: 6849317881881887634}
   - component: {fileID: 7476925501223024372}
   - component: {fileID: 3609735824178323417}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk18
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -7129,9 +7129,9 @@ GameObject:
   - component: {fileID: 2924839119491078912}
   - component: {fileID: 3956841645002097462}
   - component: {fileID: 1925453422383643491}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk36
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -7281,9 +7281,9 @@ GameObject:
   - component: {fileID: 1072310873561461452}
   - component: {fileID: 5146189811119607313}
   - component: {fileID: 1481446931821151597}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk47
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -7433,9 +7433,9 @@ GameObject:
   - component: {fileID: 2936831740540669988}
   - component: {fileID: 3739961514111163427}
   - component: {fileID: 3970398562622034755}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk15
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -7585,9 +7585,9 @@ GameObject:
   - component: {fileID: 1831630706561890365}
   - component: {fileID: 7869147142683517757}
   - component: {fileID: 9175309008466141545}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk24
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -7737,9 +7737,9 @@ GameObject:
   - component: {fileID: 5525363902141193491}
   - component: {fileID: 3054800170300931650}
   - component: {fileID: 6795233236535629503}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: rock_lod1_FracturedPreview_Chunk26
-  m_TagString: Untagged
+  m_TagString: StoneChunk
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -7883,9 +7883,17 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 7156991456662849307}
     m_Modifications:
+    - target: {fileID: -5781811878627311306, guid: b0c5c00aaf4e54b4fa3e287b8d6f5842, type: 3}
+      propertyPath: triggerMode
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 4927018074135588306, guid: b0c5c00aaf4e54b4fa3e287b8d6f5842, type: 3}
       propertyPath: m_Name
       value: Emerald
+      objectReference: {fileID: 0}
+    - target: {fileID: 4927018074135588306, guid: b0c5c00aaf4e54b4fa3e287b8d6f5842, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6493911992401036637, guid: b0c5c00aaf4e54b4fa3e287b8d6f5842, type: 3}
       propertyPath: m_LocalPosition.x
