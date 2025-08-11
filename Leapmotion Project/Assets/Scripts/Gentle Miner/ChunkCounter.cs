@@ -2,6 +2,7 @@ using LibreFracture;
 using UnityEngine;
 using System.Collections.Generic;
 using System.Reflection;
+using Unity.VisualScripting;
 
 /// <summary>
 /// Progress 계산 문제 해결된 ChunkCounter
@@ -145,6 +146,7 @@ public class ChunkCounter : MonoBehaviour
                     else
                     {
                         currentRemovedChunks++;
+                        chunk.gameObject.SetActive(false); // Detached 상태는 비활성화
                     }
                 }
                 else

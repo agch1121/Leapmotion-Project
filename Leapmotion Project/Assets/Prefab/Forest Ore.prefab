@@ -3541,9 +3541,9 @@ MonoBehaviour:
   gems:
   - gemObject: {fileID: 8427302091761681971}
     gemName: "\uC5D0\uBA54\uB784\uB4DC"
-    damageThreshold: 0
-    protectionRadius: 0
-    freeHitCount: 0
+    damageThreshold: 15
+    protectionRadius: 0.5
+    freeHitCount: 1
     currentCondition: 0
     perfectMaterial: {fileID: 0}
     damagedMaterial: {fileID: 0}
@@ -3570,7 +3570,7 @@ MonoBehaviour:
   currentActiveChunks: 0
   currentRemovedChunks: 0
   miningProgress: 0
-  targetChunkCount: 100
+  targetChunkCount: 70
   useCustomTarget: 1
   enableDebugLogs: 1
   enableProgressDebug: 1

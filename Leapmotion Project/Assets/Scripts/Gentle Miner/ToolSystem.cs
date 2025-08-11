@@ -18,6 +18,16 @@ public class ToolSystem : MonoBehaviour
     public Transform leftHandVisual;  // 왼손 Visual Transform 직접 참조
     public Transform rightHandVisual; // 오른손 Visual Transform 직접 참조
 
+    [Header("도구 활성/비활성 제어")]
+    [Range(0f, 1f)]
+    public float openThreshold = 0.15f;     // 이 값 미만이면 '펼침'으로 간주
+    [Range(0f, 1f)]
+    public float closeThreshold = 0.25f;    // 이 값 초과하면 '구부림'으로 간주
+    public float reactivateDelay = 0.6f;    // 재활성화 지연(초)
+
+    private bool toolsTemporarilyDisabled = false;
+    private float reenableTime = 0f;
+
     [Header("채굴 설정")]
     public LayerMask chunkLayer = -1;
     public float miningRadius = 0.1f;
@@ -163,6 +173,12 @@ public class ToolSystem : MonoBehaviour
         if (previewSphere != null) previewSphere.SetActive(false);
         return;
     }
+    void SetToolsActive(bool active)
+    {
+        if (chiselInstance != null) chiselInstance.SetActive(active);
+        if (hammerInstance != null) hammerInstance.SetActive(active);
+        if (previewSphere != null) previewSphere.SetActive(active && showChiselPreview);
+    }
     void SetupPreviewSphere()
     {
         if (previewSphere == null)
@@ -176,14 +192,14 @@ public class ToolSystem : MonoBehaviour
         // 기본 재질 설정
         if (safePreviewMaterial == null)
         {
-            safePreviewMaterial = new Material(Shader.Find("Standard"));
+            safePreviewMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
             safePreviewMaterial.color = Color.green;
             safePreviewMaterial.SetFloat("_Metallic", 0.5f);
         }
 
         if (dangerPreviewMaterial == null)
         {
-            dangerPreviewMaterial = new Material(Shader.Find("Standard"));
+            dangerPreviewMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
             dangerPreviewMaterial.color = Color.red;
             dangerPreviewMaterial.SetFloat("_Metallic", 0.5f);
         }
@@ -195,13 +211,62 @@ public class ToolSystem : MonoBehaviour
         UpdateChiselTarget();
         UpdateVisualGuides();
         HandleSafetySystem();
+        // 게임 미시작이면 항상 숨김
         if (!GameManager.Instance.IsGameStarted)
+        {
             HideToolInstances();
+            return;
+        }
+
+        // === 양손 펼침/구부림 상태에 따른 임시 비활성화 로직 ===
+        bool hasHand = handController != null;
+
+        // 안전 가드: 핸드 정보가 없으면 항상 활성화
+        if (!hasHand)
+        {
+            SetToolsActive(true);
+            return;
+        }
+
+        bool leftOpen = handController.LeftHandGrabStrength < openThreshold;
+        bool rightOpen = handController.RightHandGrabStrength < openThreshold;
+        bool bothOpen = leftOpen && rightOpen;
+
+        // 둘 다 펼치면 즉시 비활성화 + 재활성 대기 타이머 설정
+        if (bothOpen)
+        {
+            if (!toolsTemporarilyDisabled)
+            {
+                SetToolsActive(false);
+                toolsTemporarilyDisabled = true;
+                reenableTime = Time.time + reactivateDelay;
+                Debug.Log("양손 펼침 감지 - 도구 잠시 비활성화");
+            }
+        }
         else
         {
-            if (chiselInstance != null) chiselInstance.SetActive(true);
-            if (hammerInstance != null) hammerInstance.SetActive(true);
-            if (previewSphere != null) previewSphere.SetActive(true);
+            // 한 손이라도 충분히 구부리면(closeThreshold 초과) 지연 후 재활성화
+            bool anyClosed = (handController.LeftHandGrabStrength > closeThreshold) ||
+                             (handController.RightHandGrabStrength > closeThreshold);
+
+            if (toolsTemporarilyDisabled && anyClosed && Time.time >= reenableTime)
+            {
+                SetToolsActive(true);
+                toolsTemporarilyDisabled = false;
+                Debug.Log("손 다시 구부림 - 도구 재활성화");
+            }
+        }
+
+        // 비활성 상태 유지 중에는 계속 OFF 상태 유지
+        if (toolsTemporarilyDisabled)
+        {
+            // 이미 SetToolsActive(false) 적용됨. 안전을 위해 유지:
+            SetToolsActive(false);
+        }
+        else
+        {
+            // 활성 상태 유지
+            SetToolsActive(true);
         }
     }
 

@@ -9,6 +9,7 @@ public class HandController : MonoBehaviour
 {
     [Header("립모션 설정")]
     public bool useLeapMotion = true;
+    public float LeftHandGrabStrength { get; private set; }
 
     [Header("커스텀 쥐는 강도 시스템")]
     public bool useCustomGrabStrength = true;
@@ -234,6 +235,7 @@ public class HandController : MonoBehaviour
             {
                 targetLeftPos = palmPos;
                 targetLeftRot = Quaternion.LookRotation(direction, palmNormal);
+                LeftHandGrabStrength = hand.GrabStrength;
                 dataProcessed = true;
             }
             else if (hand.IsRight)
