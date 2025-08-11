@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 4888169066356711179}
   - component: {fileID: 2312596946507402137}
   - component: {fileID: 2429082488092938769}
+  - component: {fileID: -5781811878627311306}
   m_Layer: 0
   m_Name: Emerald
   m_TagString: Untagged
@@ -114,3 +115,22 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
+--- !u!114 &-5781811878627311306
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4927018074135588306}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ec5140eeb9091b147b38c9373f5a9f82, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  startDelaySeconds: 10
+  checkInterval: 0.2
+  exposureRadius: 0.35
+  stoneTag: StoneChunk
+  scanLayers:
+    serializedVersion: 2
+    m_Bits: 4096

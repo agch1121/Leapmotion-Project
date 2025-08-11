@@ -3,6 +3,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Reflection;
 using Unity.VisualScripting;
+using System.Collections;
 
 /// <summary>
 /// Progress 계산 문제 해결된 ChunkCounter
@@ -146,7 +147,7 @@ public class ChunkCounter : MonoBehaviour
                     else
                     {
                         currentRemovedChunks++;
-                        chunk.gameObject.SetActive(false); // Detached 상태는 비활성화
+                        StartCoroutine(LazyDisable(chunk.gameObject)); // 비활성화 처리
                     }
                 }
                 else
@@ -188,6 +189,11 @@ public class ChunkCounter : MonoBehaviour
         }
     }
 
+    IEnumerator LazyDisable(GameObject chunk)
+    {
+        yield return new WaitForSeconds(7f); // 7초 정도 대기
+        chunk.gameObject.SetActive(false); // Detached 상태는 비활성화
+    }
     /// <summary>
     /// 상태별 조각 개수 반환
     /// </summary>

@@ -464,7 +464,19 @@ public class HandController : MonoBehaviour
     {
         float totalSpeed = RightHandVelocity.magnitude;
 
-        if (totalSpeed < minTotalVelocity) // 0.1f
+        // 아래로 내려찍는 동작인지 확인 (Y 속도가 음수인지)
+        float downwardSpeed = -RightHandVelocity.y;
+        if (downwardSpeed <= minDownwardVelocity)
+        {
+            if (enableDetailedDebug)
+            {
+                Debug.Log($"아래쪽 속도 부족: {downwardSpeed:F3} <= {minDownwardVelocity}");
+            }
+            return false;
+        }
+
+        // 총 속도 확인
+        if (totalSpeed < minTotalVelocity)
         {
             if (enableDetailedDebug)
             {
@@ -474,15 +486,14 @@ public class HandController : MonoBehaviour
         }
 
         // 아래쪽 움직임 비율 계산
-        float downwardSpeed = Mathf.Abs(RightHandVelocity.y);
         float downwardRatio = totalSpeed > 0.01f ? downwardSpeed / totalSpeed : 0f;
 
-        // 아래비율 조건을 5%로 대폭 완화 (기존 20%에서)
-        bool result = downwardRatio > 0.05f; // 기존 0.2f에서 0.05f로 완화
+        // 아래쪽 비율이 충분한지 확인
+        bool result = downwardRatio > 0.1f; // 기존 0.2f에서 0.1f로 완화
 
         if (enableDetailedDebug)
         {
-            Debug.Log($"휘두르기 체크: 총속도={totalSpeed:F3}, 아래비율={downwardRatio:F3} > 0.05 = {result}");
+            Debug.Log($"휘두르기 체크: 총속도={totalSpeed:F3}, 아래비율={downwardRatio:F3} > 0.1 = {result}");
         }
 
         return result;

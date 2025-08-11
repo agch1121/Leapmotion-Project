@@ -219,7 +219,7 @@ public class GameManager : MonoBehaviour
     /// <summary>
     /// 100% 완료 처리 (기존 로직 복원)
     /// </summary>  
-    void OnMiningComplete(float progress)
+    public void OnMiningComplete(float progress)
     {
         gameCompleted = true;
         ChangeGameState(GameState.Perfect);
