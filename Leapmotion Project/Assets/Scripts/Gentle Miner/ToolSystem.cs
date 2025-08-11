@@ -72,11 +72,10 @@ public class ToolSystem : MonoBehaviour
 
     void InitializeToolSystem()
     {
-        // 시스템 참조 가져오기
         handController = FindFirstObjectByType<HandController>();
         forceCalculator = FindFirstObjectByType<ForceCalculator>();
         audioSource = GetComponent<AudioSource>();
-        accuracyDetector = FindObjectOfType<AccuracyDetector>(); // ⭐ AccuracyDetector 참조 추가
+        accuracyDetector = FindObjectOfType<AccuracyDetector>();
 
         if (handController == null)
         {
@@ -84,7 +83,6 @@ public class ToolSystem : MonoBehaviour
             return;
         }
 
-        // 손 Visual이 Inspector에서 할당되지 않았다면 HandController에서 가져오기
         if (leftHandVisual == null && handController.leftHandVisual != null)
         {
             leftHandVisual = handController.leftHandVisual;
@@ -95,38 +93,28 @@ public class ToolSystem : MonoBehaviour
             rightHandVisual = handController.rightHandVisual;
         }
 
-        // 오디오 소스 설정
         if (audioSource == null)
         {
             audioSource = gameObject.AddComponent<AudioSource>();
         }
 
-        // ⭐ 변경사항: HandController의 OnHammerStrike 이벤트 구독을 제거
-        // handController.OnHammerStrike += OnHammerStrike; 
-
-        // 도구 인스턴스 생성
         CreateToolInstances();
-
-        // 미리보기 구체 설정
         SetupPreviewSphere();
     }
 
     void CreateToolInstances()
     {
-        // 끌 인스턴스 생성
         if (chiselPrefab != null)
         {
             chiselInstance = Instantiate(chiselPrefab);
             chiselInstance.name = "Chisel_Instance";
 
-            // 물리 비활성화 (손에 고정되므로)
             Rigidbody chiselRb = chiselInstance.GetComponent<Rigidbody>();
             if (chiselRb != null)
             {
                 chiselRb.isKinematic = true;
             }
 
-            // Collider도 트리거로 설정
             Collider chiselCol = chiselInstance.GetComponent<Collider>();
             if (chiselCol != null)
             {
@@ -134,20 +122,17 @@ public class ToolSystem : MonoBehaviour
             }
         }
 
-        // 망치 인스턴스 생성
         if (hammerPrefab != null)
         {
             hammerInstance = Instantiate(hammerPrefab);
             hammerInstance.name = "Hammer_Instance";
 
-            // 물리 비활성화 (손에 고정되므로)
             Rigidbody hammerRb = hammerInstance.GetComponent<Rigidbody>();
             if (hammerRb != null)
             {
                 hammerRb.isKinematic = true;
             }
 
-            // Collider도 트리거로 설정
             Collider hammerCol = hammerInstance.GetComponent<Collider>();
             if (hammerCol != null)
             {
@@ -155,7 +140,6 @@ public class ToolSystem : MonoBehaviour
             }
         }
 
-        // 가이드라인 설정
         if (chiselGuideLine == null)
         {
             chiselGuideLine = gameObject.AddComponent<LineRenderer>();
@@ -189,17 +173,15 @@ public class ToolSystem : MonoBehaviour
             previewSphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             previewSphere.name = "ChiselPreview";
 
-            // ⭐ 변경사항: 시각적 크기는 perfectHitRadius를 기준으로 설정
+            float colliderSize = (accuracyDetector != null) ? accuracyDetector.maxDetectionRadius : 1.0f;
             float visualScale = (accuracyDetector != null) ? accuracyDetector.perfectHitRadius * 2f : 0.1f;
+
             previewSphere.transform.localScale = Vector3.one * visualScale;
 
             Destroy(previewSphere.GetComponent<Collider>());
             SphereCollider sphereCollider = previewSphere.AddComponent<SphereCollider>();
             sphereCollider.isTrigger = true;
-
-            // ⭐ 변경사항: 콜라이더 반경은 maxDetectionRadius를 기준으로 설정
-            float colliderRadius = (accuracyDetector != null) ? accuracyDetector.maxDetectionRadius : 1.0f;
-            sphereCollider.radius = colliderRadius;
+            sphereCollider.radius = colliderSize;
 
             previewSphere.tag = "ChiselTarget";
             previewSphere.AddComponent<AccuracyDetector>();
@@ -333,35 +315,25 @@ public class ToolSystem : MonoBehaviour
     {
         GameObject currentMineralBlock = FindCurrentMineralBlock();
 
-        if (currentMineralBlock == null)
-        {
-            isChiselTargetValid = false;
-            Vector3 chiselWorldPos = chiselInstance != null ? chiselInstance.transform.position : (leftHandVisual != null ? leftHandVisual.position : Vector3.zero);
-            currentChiselTarget = chiselWorldPos + Vector3.forward * 0.5f;
-            return;
-        }
-
         Vector3 chiselPos = chiselInstance != null ? chiselInstance.transform.position : (leftHandVisual != null ? leftHandVisual.position : Vector3.zero);
         Vector3 chiselForward = chiselInstance != null ? chiselInstance.transform.forward : (leftHandVisual != null ? leftHandVisual.forward : Vector3.forward);
         Ray chiselRay = new Ray(chiselPos, chiselForward);
         RaycastHit hit;
 
+        isChiselTargetValid = false;
+
         if (Physics.Raycast(chiselRay, out hit, chiselRayDistance, chunkLayer))
         {
-            if (hit.collider.transform.IsChildOf(currentMineralBlock.transform))
+            if (currentMineralBlock != null && hit.collider.transform.IsChildOf(currentMineralBlock.transform))
             {
                 currentChiselTarget = hit.point;
                 isChiselTargetValid = true;
             }
-            else
-            {
-                isChiselTargetValid = false;
-            }
         }
-        else
+
+        if (!isChiselTargetValid)
         {
-            isChiselTargetValid = false;
-            currentChiselTarget = chiselPos + chiselForward * 0.5f;
+            currentChiselTarget = chiselPos + chiselForward * chiselRayDistance;
         }
     }
 
@@ -386,8 +358,17 @@ public class ToolSystem : MonoBehaviour
     {
         if (chiselGuideLine != null && chiselInstance != null)
         {
-            chiselGuideLine.SetPosition(0, chiselInstance.transform.position);
-            chiselGuideLine.SetPosition(1, currentChiselTarget);
+            if (isChiselTargetValid)
+            {
+                chiselGuideLine.SetPosition(0, chiselInstance.transform.position);
+                chiselGuideLine.SetPosition(1, previewSphere.transform.position);
+            }
+            else
+            {
+                chiselGuideLine.SetPosition(0, chiselInstance.transform.position);
+                chiselGuideLine.SetPosition(1, chiselInstance.transform.position + chiselInstance.transform.forward * chiselRayDistance);
+            }
+
             Color lineColor = isChiselTargetValid ? Color.green : Color.gray;
             chiselGuideLine.startColor = lineColor;
             chiselGuideLine.endColor = lineColor;
@@ -395,18 +376,21 @@ public class ToolSystem : MonoBehaviour
 
         if (previewSphere != null && showChiselPreview)
         {
-            previewSphere.transform.position = currentChiselTarget;
-            previewSphere.SetActive(isChiselTargetValid);
-
             if (isChiselTargetValid)
             {
+                previewSphere.transform.position = currentChiselTarget;
+                previewSphere.SetActive(true);
+
                 bool isSafeForce = forceCalculator?.IsSafeForce() ?? true;
                 MeshRenderer renderer = previewSphere.GetComponent<MeshRenderer>();
                 renderer.material = isSafeForce ? safePreviewMaterial : dangerPreviewMaterial;
 
-                // ⭐ 변경된 부분: 시각적 구체의 크기를 perfectHitRadius 값에 맞춥니다.
                 float previewScale = (accuracyDetector != null) ? accuracyDetector.perfectHitRadius * 2f : 0.1f;
                 previewSphere.transform.localScale = Vector3.one * previewScale;
+            }
+            else
+            {
+                previewSphere.SetActive(false);
             }
         }
     }
