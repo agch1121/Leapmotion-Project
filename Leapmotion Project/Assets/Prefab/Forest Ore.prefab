@@ -3570,7 +3570,7 @@ MonoBehaviour:
   currentActiveChunks: 0
   currentRemovedChunks: 0
   miningProgress: 0
-  targetChunkCount: 100
+  targetChunkCount: 30
   useCustomTarget: 1
   enableDebugLogs: 1
   enableProgressDebug: 1

@@ -438,7 +438,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 1}
   m_AnchorMax: {x: 0.5, y: 1}
-  m_AnchoredPosition: {x: -0.000038146973, y: -208.8}
+  m_AnchoredPosition: {x: -0.000038146973, y: -221.1}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &149175221
@@ -526,7 +526,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: 0, y: 0, z: 0, w: 0}
+  m_margin: {x: 0, y: 0, z: 0, w: -29.650818}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0
@@ -1164,7 +1164,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 8.81, y: 50}
+  m_AnchoredPosition: {x: 8.810059, y: 50}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0, y: 0}
 --- !u!1 &338831082
@@ -12037,6 +12037,10 @@ PrefabInstance:
       propertyPath: gameplayPanel
       value: 
       objectReference: {fileID: 621830422}
+    - target: {fileID: 537024012670487210, guid: a62800902f317f14abadb0d43bfaca8f, type: 3}
+      propertyPath: gemStatusText
+      value: 
+      objectReference: {fileID: 149175221}
     - target: {fileID: 537024012670487210, guid: a62800902f317f14abadb0d43bfaca8f, type: 3}
       propertyPath: progressTitle
       value: 

@@ -1,48 +1,38 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Text;
+using System.Collections.Generic;
 
 /// <summary>
-/// 현재 UI 구조에 맞게 수정된 UI 관리 시스템
-/// [수정] 정확도 표시 UI 추가
+/// UI 관리 시스템
+/// [수정] 누락된 타이머 색상 변수 선언 추가
 /// </summary>
 public class UIManager : MonoBehaviour
 {
     [Header("UI 패널들")]
-    public GameObject gameplayPanel; // Panel - Info가 게임플레이 UI 역할
-    public GameObject resultPanel;   // 아직 생성 안됨 - 추후 생성 예정
+    public GameObject gameplayPanel;
+    public GameObject resultPanel;
 
-    [Header("현재 게임플레이 UI 요소들")]
-    public TextMeshProUGUI timeTitle;        // Text (TMP) - Time Title
-    public TextMeshProUGUI timeText;         // Text (TMP) - Time  
-    public Slider progressSlider;            // Slider - Progress Bar
-    public TextMeshProUGUI progressTitle;    // Text (TMP) - Progress Title
-    public TextMeshProUGUI score;       // Text (TMP) - Score (Canvas 직속)
+    [Header("게임플레이 UI 요소")]
+    public TextMeshProUGUI timeTitle;
+    public TextMeshProUGUI timeText;
+    public Slider progressSlider;
+    public TextMeshProUGUI progressTitle;
+    public TextMeshProUGUI score;
 
     [Header("힘 표시 시스템")]
-    public Slider forceSlider;              // Slider - Force Strength
-    public Image safeImage;                 // Image - Safe
-    public Image warningImage;              // Image - Warning
-    public Image successPointImage;         // Image - Success Point
+    public Slider forceSlider;
+    public Image safeImage;
+    public Image warningImage;
+    public Image successPointImage;
 
-    [Header("정확도 표시 UI")] // [추가]
+    [Header("정확도 표시 UI")]
     public TextMeshProUGUI lastAccuracyText;
     public TextMeshProUGUI averageAccuracyText;
 
-    [Header("게임 설정")]
-    [Range(60f, 600f)]
-    public float gameDuration = 180f;       // 게임 제한 시간 (초) - 기본 3분
-
-    [Header("힘 상태 색상")]
-    public Color safeForceColor = Color.green;
-    public Color mediumForceColor = Color.yellow;
-    public Color dangerForceColor = Color.red;
-
-    [Header("타이머 설정")]
-    public float defaultTimeLimit = 180f;    // 기본 제한시간 (3분)
-    public Color normalTimeColor = Color.white;
-    public Color warningTimeColor = Color.yellow;  // 30초 남았을 때
-    public Color dangerTimeColor = Color.red;      // 10초 남았을 때
+    [Header("보석 상태 UI")]
+    public TextMeshProUGUI gemStatusText;
 
     [Header("결과 패널 UI")]
     public TextMeshProUGUI resultTitleText;
@@ -52,19 +42,28 @@ public class UIManager : MonoBehaviour
     public GameObject nextButton;
     public TextMeshProUGUI nextButtonText;
 
-    // 시스템 참조
-    private GameManager gameManager;
-    private ForceCalculator forceCalculator;
-    private GemProtectionSystem gemProtectionSystem;
-    private ScoreSystem scoreSystem;
+    [Header("게임 설정")]
+    [Range(60f, 600f)]
+    public float gameDuration = 180f;
 
-    // 시간 관련 변수들
+    [Header("힘 상태 색상")]
+    public Color safeForceColor = Color.green;
+    public Color mediumForceColor = Color.yellow;
+    public Color dangerForceColor = Color.red;
+
+    [Header("타이머 설정")]
+    public float defaultTimeLimit = 180f;
+    public Color normalTimeColor = Color.white; // [수정] 변수 선언 추가
+    public Color warningTimeColor = Color.yellow; // [수정] 변수 선언 추가
+    public Color dangerTimeColor = Color.red; // [수정] 변수 선언 추가
+
+    private GameManager gameManager;
+    private ScoreSystem scoreSystem;
+    private ForceCalculator forceCalculator;
     private float currentTimeLimit = 180f;
     private float gameStartTime = 0f;
     private float remainingTime = 0f;
     private bool isTimeWarning = false;
-
-    // UI 상태
     private bool isGameEnded = false;
 
     void Start()
@@ -74,19 +73,11 @@ public class UIManager : MonoBehaviour
 
     void InitializeUIManager()
     {
-        // 시스템 참조 찾기
         gameManager = FindFirstObjectByType<GameManager>();
         forceCalculator = FindFirstObjectByType<ForceCalculator>();
-        gemProtectionSystem = FindFirstObjectByType<GemProtectionSystem>();
         scoreSystem = FindFirstObjectByType<ScoreSystem>();
-
-        // 이벤트 구독
         SubscribeToEvents();
-
-        // 초기 UI 상태 설정
         SetInitialUIState();
-
-        Debug.Log("UIManager 초기화 완료");
     }
 
     void SubscribeToEvents()
@@ -99,7 +90,6 @@ public class UIManager : MonoBehaviour
             gameManager.OnScoreChanged += OnScoreChanged;
         }
 
-        // [추가] ScoreSystem의 평균 정확도 변경 이벤트 구독
         if (scoreSystem != null)
         {
             scoreSystem.OnAverageAccuracyChanged += OnAverageAccuracyChanged;
@@ -108,279 +98,64 @@ public class UIManager : MonoBehaviour
 
     void SetInitialUIState()
     {
-        // 게임플레이 패널 활성화
-        if (gameplayPanel != null)
-            gameplayPanel.SetActive(true);
-
-        // 결과 패널 비활성화
-        if (resultPanel != null)
-            resultPanel.SetActive(false);
-
-        // 초기 값들 설정
+        if (gameplayPanel != null) gameplayPanel.SetActive(true);
+        if (resultPanel != null) resultPanel.SetActive(false);
+        ResetGameplayUI();
         SetupTimerForCurrentStage();
         UpdateTimeUI("채굴 준비 중");
-        UpdateProgressUI(0f);
         UpdateScoreUI(0);
         UpdateForceUI(0f, ForceCalculator.ForceLevel.Weak);
+        UpdateSuccessPointPosition();
+        isGameEnded = false;
+    }
 
-        // [추가] 정확도 UI 초기화
+    public void ResetGameplayUI()
+    {
+        UpdateProgressUI(0f);
         UpdateLastAccuracyUI(0f);
         UpdateAverageAccuracyUI(0f);
-        if (lastAccuracyText != null) lastAccuracyText.text = "정확도: -";
-        if (averageAccuracyText != null) averageAccuracyText.text = "평균 정확도: -";
+        if (gemStatusText != null)
+        {
+            gemStatusText.text = "보석 정보 로딩 중...";
+            gemStatusText.gameObject.SetActive(true);
+        }
+    }
 
-        // 성공 포인트 이미지 70% 위치에 표시
-        UpdateSuccessPointPosition();
-
-        isGameEnded = false;
+    public void UpdateAllGemStatusText(GemProtectionSystem.GemData[] gems)
+    {
+        if (gemStatusText == null) return;
+        if (gems == null || gems.Length == 0)
+        {
+            gemStatusText.gameObject.SetActive(false);
+            return;
+        }
+        gemStatusText.gameObject.SetActive(true);
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < gems.Length; i++)
+        {
+            // [수정] 긴 이름에서 첫 단어(보석 타입)만 추출
+            string simpleName = gems[i].gemName.Split(' ')[0];
+            sb.Append(simpleName);
+            if (i < gems.Length - 1) sb.Append(" | ");
+        }
+        sb.AppendLine();
+        for (int i = 0; i < gems.Length; i++)
+        {
+            string status = gems[i].isDestroyed ? "<color=red>파괴</color>" : $"{gems[i].currentCondition:F0}%";
+            sb.Append(status);
+            if (i < gems.Length - 1) sb.Append(" | ");
+        }
+        gemStatusText.text = sb.ToString();
     }
 
     void Update()
     {
-        // 힘 표시 업데이트
         UpdateForceDisplay();
-
-        // 시간 업데이트
         UpdateTimeDisplay();
-
-        // 보석 상태 업데이트 (향후 확장용)
-        UpdateGemStatusDisplay();
     }
 
-    // [추가] 마지막 타격 정확도 UI 업데이트
-    public void UpdateLastAccuracyUI(float accuracy)
-    {
-        if (lastAccuracyText != null)
-        {
-            lastAccuracyText.text = $"정확도: {accuracy:P0}";
-        }
-    }
-
-    // [추가] 평균 정확도 UI 업데이트 (이벤트 핸들러)
-    private void OnAverageAccuracyChanged(float newAverage)
-    {
-        UpdateAverageAccuracyUI(newAverage);
-    }
-
-    // [추가] 평균 정확도 UI 업데이트
-    public void UpdateAverageAccuracyUI(float accuracy)
-    {
-        if (averageAccuracyText != null)
-        {
-            if (accuracy == 0)
-            {
-                averageAccuracyText.text = "평균 정확도: -";
-            }
-            else
-            {
-                averageAccuracyText.text = $"평균 정확도: {accuracy:P0}";
-            }
-        }
-    }
-
-
-    void UpdateForceDisplay()
-    {
-        if (forceCalculator == null) return;
-
-        float currentForce = forceCalculator.CurrentForce;
-        var forceLevel = forceCalculator.CurrentForceLevel;
-
-        UpdateForceUI(currentForce, forceLevel);
-    }
-
-    void UpdateTimeDisplay()
-    {
-        if (gameManager == null || isGameEnded) return;
-
-        // 게임 시작 전에는 제한시간 표시
-        if (!gameManager.IsGameStarted)
-        {
-            remainingTime = currentTimeLimit;
-            UpdateTimeText(remainingTime);
-            return;
-        }
-
-        // 게임 진행 중에는 카운트다운
-        float elapsedTime = Time.time - gameStartTime;
-        remainingTime = Mathf.Max(0f, currentTimeLimit - elapsedTime);
-
-        UpdateTimeText(remainingTime);
-        UpdateTimeColor(remainingTime);
-
-        // 시간 종료 체크
-        if (remainingTime <= 0f && !isGameEnded)
-        {
-            OnTimeUp();
-        }
-    }
-
-    void UpdateTimeColor(float timeInSeconds)
-    {
-        if (timeText == null) return;
-
-        Color targetColor;
-
-        if (timeInSeconds <= 10f) // 10초 이하 - 위험 (빨간색)
-        {
-            targetColor = dangerTimeColor;
-
-            // 깜박임 효과 (5초 이하일 때)
-            if (timeInSeconds <= 5f)
-            {
-                float alpha = Mathf.PingPong(Time.time * 3f, 1f); // 빠른 깜박임
-                targetColor.a = Mathf.Lerp(0.3f, 1f, alpha);
-            }
-        }
-        else if (timeInSeconds <= 30f) // 30초 이하 - 경고 (노란색)
-        {
-            targetColor = warningTimeColor;
-
-            if (!isTimeWarning)
-            {
-                isTimeWarning = true;
-                Debug.Log("시간 경고! 30초 남음");
-            }
-        }
-        else // 30초 초과 - 정상 (흰색)
-        {
-            targetColor = normalTimeColor;
-        }
-
-        timeText.color = targetColor;
-    }
-
-    void UpdateTimeText(float timeInSeconds)
-    {
-        int minutes = Mathf.FloorToInt(timeInSeconds / 60f);
-        int seconds = Mathf.FloorToInt(timeInSeconds % 60f);
-
-        if (timeText != null)
-        {
-            timeText.text = $"{minutes:00}:{seconds:00}";
-        }
-    }
-
-    void OnTimeUp()
-    {
-        Debug.Log("제한시간 종료!");
-
-        if (gameManager != null)
-        {
-            // 현재 진행률에 따라 결과 결정
-            float currentProgress = gameManager.CurrentProgress;
-
-            if (currentProgress >= 0.7f) // 70% 이상이면 성공으로 처리
-            {
-                Debug.Log("시간 종료되었지만 70% 이상 완료로 성공 처리");
-                // GameManager에서 자동으로 성공 처리될 것임
-            }
-            else
-            {
-                // 시간 초과로 실패 처리
-                gameManager.OnTimeUp(); // GameManager에 시간 초과 알림
-            }
-        }
-
-        isGameEnded = true;
-    }
-
-    void UpdateForceUI(float force, ForceCalculator.ForceLevel level)
-    {
-        // 힘 슬라이더 업데이트
-        if (forceSlider != null)
-        {
-            forceSlider.value = force;
-        }
-
-        // 힘 상태에 따른 이미지 표시
-        UpdateForceStatusImages(level);
-    }
-
-    /// <summary>
-    /// 현재 스테이지에 맞는 제한시간 설정
-    /// </summary>
-    void SetupTimerForCurrentStage()
-    {
-        if (gameManager != null)
-        {
-            // 스테이지별 제한시간 설정
-            switch (gameManager.CurrentStage)
-            {
-                case 1:
-                    currentTimeLimit = 300f; // 5분 (초보자용)
-                    break;
-                case 2:
-                    currentTimeLimit = 240f; // 4분 (중급자용)
-                    break;
-                case 3:
-                    currentTimeLimit = 180f; // 3분 (고급자용)
-                    break;
-                default:
-                    currentTimeLimit = defaultTimeLimit;
-                    break;
-            }
-        }
-        else
-        {
-            currentTimeLimit = defaultTimeLimit;
-        }
-
-        remainingTime = currentTimeLimit;
-        Debug.Log($"스테이지 {gameManager?.CurrentStage ?? 1} 제한시간: {currentTimeLimit}초");
-    }
-
-    void UpdateForceStatusImages(ForceCalculator.ForceLevel level)
-    {
-        // 모든 이미지 비활성화
-        if (safeImage != null) safeImage.gameObject.SetActive(false);
-        if (warningImage != null) warningImage.gameObject.SetActive(false);
-
-        // 현재 상태에 맞는 이미지만 활성화
-        switch (level)
-        {
-            case ForceCalculator.ForceLevel.Weak:
-                if (safeImage != null) safeImage.gameObject.SetActive(true);
-                break;
-            case ForceCalculator.ForceLevel.Medium:
-                if (warningImage != null) warningImage.gameObject.SetActive(true);
-                break;
-            case ForceCalculator.ForceLevel.Strong:
-                if (warningImage != null) warningImage.gameObject.SetActive(true);
-                break;
-        }
-    }
-
-    void UpdateSuccessPointPosition()
-    {
-        if (successPointImage == null || progressSlider == null) return;
-
-        // 70% 지점에 성공 포인트 이미지 배치
-        RectTransform sliderRect = progressSlider.GetComponent<RectTransform>();
-        RectTransform successRect = successPointImage.GetComponent<RectTransform>();
-
-        if (sliderRect != null && successRect != null)
-        {
-            float sliderWidth = sliderRect.rect.width;
-            float successPosition = sliderWidth * 0.9f; // 70% 위치
-
-            successRect.anchoredPosition = new Vector2(successPosition, successRect.anchoredPosition.y);
-        }
-    }
-
-    void UpdateGemStatusDisplay()
-    {
-        // 향후 보석 상태 UI 확장용
-        // 현재는 비어있음
-    }
-
-    /// <summary>
-    /// 게임 상태 변경 처리
-    /// </summary>
     public void OnGameStateChanged(GameManager.GameState newState)
     {
-        Debug.Log($"UI 상태 변경: {newState}");
-
         switch (newState)
         {
             case GameManager.GameState.NotStarted:
@@ -390,166 +165,218 @@ public class UIManager : MonoBehaviour
                 SetupTimerForCurrentStage();
                 UpdateTimeUI("게임 준비 중...");
                 break;
-
             case GameManager.GameState.Playing:
                 ShowGameplayUI();
                 UpdateTimeUI("채굴 진행 중");
-                gameStartTime = Time.time; // 게임 시작 시간 기록
+                gameStartTime = Time.time;
                 isGameEnded = false;
                 isTimeWarning = false;
                 break;
-
             case GameManager.GameState.Success:
                 UpdateTimeUI("채굴 성공!");
-                ShowResultMessage("채굴 성공!", $"70% 이상 채굴 완료!\n남은 시간: {Mathf.FloorToInt(remainingTime)}초");
+                ShowResultPanelWithDetails("채굴 성공!", "", gameManager.GetScoreSystem());
                 isGameEnded = true;
                 break;
-
             case GameManager.GameState.Perfect:
-                ShowResultMessage("완벽한 채굴!", $"100% 완료로 보너스 획득!\n남은 시간: {Mathf.FloorToInt(remainingTime)}초");
+                UpdateTimeUI("완벽한 채굴!");
+                ShowResultPanelWithDetails("완벽한 채굴!", "", gameManager.GetScoreSystem());
                 isGameEnded = true;
                 break;
-
             case GameManager.GameState.Failed:
-                string failMessage = remainingTime <= 0 ?
-                    "시간 초과로 실패했습니다" :
-                    "보석이 파괴되었습니다";
+                string failMessage = remainingTime <= 0 ? "시간 초과" : "보석 파괴";
                 UpdateTimeUI("채굴 실패..");
-                nextButton.SetActive(false);
-                nextButtonText.text = "";
-                ShowResultMessage("채굴 실패", failMessage);
+                ShowResultPanelWithDetails("채굴 실패", failMessage, null);
                 isGameEnded = true;
                 break;
-
-            case GameManager.GameState.Paused:
-                ShowResultMessage("일시정지", "게임이 일시정지되었습니다");
-                break;
         }
     }
 
-    /// <summary>
-    /// 게임플레이 UI 표시
-    /// </summary>
-    void ShowGameplayUI()
+    void ShowResultPanelWithDetails(string title, string message, ScoreSystem scoreSystemRef)
     {
-        if (gameplayPanel != null)
-            gameplayPanel.SetActive(true);
+        if (resultPanel == null) return;
 
-        if (resultPanel != null)
+        resultPanel.SetActive(true);
+        if (resultTitleText != null) resultTitleText.text = title;
+
+        StringBuilder sb = new StringBuilder();
+        sb.AppendLine(message);
+
+        if (scoreSystemRef != null)
         {
-            resultPanel.SetActive(false);
-            nextButton.SetActive(true);
-            nextButtonText.text = "다음 스테이지";
+            sb.AppendLine();
+            sb.AppendLine($"보석 점수: {scoreSystemRef.LastCalculatedGemScore}점");
+            sb.AppendLine($"정확도 점수: {scoreSystemRef.LastCalculatedBonusScore}점");
+            sb.AppendLine($"(평균 정확도: {scoreSystemRef.AverageAccuracy:P0})");
         }
-    }
 
-    /// <summary>
-    /// 결과 메시지 표시 (결과 패널이 없으면 콘솔에만 출력)
-    /// </summary>
-    void ShowResultMessage(string title, string message)
-    {
-        if (resultPanel != null)
-        {
-            resultPanel.SetActive(true);
-
-            if (resultTitleText != null)
-                resultTitleText.text = title;
-
-            if (resultMessageText != null)
-                resultMessageText.text = message;
-        }
-        else
-        {
-            // 결과 패널이 없으면 콘솔에 출력
-            Debug.Log($"=== {title} ===");
-            Debug.Log(message);
-        }
+        if (resultMessageText != null) resultMessageText.text = sb.ToString();
     }
 
     public void OnStageChanged(int newStage)
     {
-        if (timeTitle != null)
-        {
-            timeTitle.text = $"스테이지 {newStage}";
-        }
-
-        // 새 스테이지의 제한시간 설정
+        if (timeTitle != null) timeTitle.text = $"스테이지 {newStage}";
         SetupTimerForCurrentStage();
     }
 
-    public void OnProgressChanged(float progress)
+    public void UpdateLastAccuracyUI(float accuracy)
     {
-        UpdateProgressUI(progress);
+        if (lastAccuracyText == null) return;
+        lastAccuracyText.text = accuracy > 0 ? $"정확도: {accuracy:P0}" : "정확도: -";
     }
 
-    public void OnScoreChanged(int score)
+    private void OnAverageAccuracyChanged(float newAverage)
     {
-        UpdateScoreUI(score);
+        UpdateAverageAccuracyUI(newAverage);
     }
 
-    void UpdateTimeUI(string status)
+    public void UpdateAverageAccuracyUI(float accuracy)
     {
-        if (timeTitle != null)
+        if (averageAccuracyText == null) return;
+        averageAccuracyText.text = accuracy > 0 ? $"평균 정확도: {accuracy:P0}" : "평균 정확도: -";
+    }
+
+    void UpdateForceDisplay()
+    {
+        if (forceCalculator == null) return;
+        float currentForce = forceCalculator.CurrentForce;
+        var forceLevel = forceCalculator.CurrentForceLevel;
+        UpdateForceUI(currentForce, forceLevel);
+    }
+
+    void UpdateTimeDisplay()
+    {
+        if (gameManager == null || isGameEnded) return;
+
+        if (!gameManager.IsGameStarted)
         {
-            timeTitle.text = status;
+            remainingTime = currentTimeLimit;
+            UpdateTimeText(remainingTime);
+            return;
+        }
+
+        float elapsedTime = Time.time - gameStartTime;
+        remainingTime = Mathf.Max(0f, currentTimeLimit - elapsedTime);
+
+        UpdateTimeText(remainingTime);
+        UpdateTimeColor(remainingTime);
+
+        if (remainingTime <= 0f && !isGameEnded)
+        {
+            OnTimeUp();
         }
     }
 
-    void UpdateProgressUI(float progress)
+    void UpdateTimeColor(float timeInSeconds)
     {
-        if (progressSlider != null)
+        if (timeText == null) return;
+        Color targetColor;
+        if (timeInSeconds <= 10f)
         {
-            progressSlider.value = progress;
+            targetColor = dangerTimeColor;
+            if (timeInSeconds <= 5f)
+            {
+                float alpha = Mathf.PingPong(Time.time * 3f, 1f);
+                targetColor.a = Mathf.Lerp(0.3f, 1f, alpha);
+            }
         }
-
-        if (progressTitle != null)
+        else if (timeInSeconds <= 30f)
         {
-            progressTitle.text = $"진행률: {progress * 100f:F1}%";
+            targetColor = warningTimeColor;
+            if (!isTimeWarning) { isTimeWarning = true; }
+        }
+        else
+        {
+            targetColor = normalTimeColor;
+        }
+        timeText.color = targetColor;
+    }
+
+    void UpdateTimeText(float timeInSeconds)
+    {
+        int minutes = Mathf.FloorToInt(timeInSeconds / 60f);
+        int seconds = Mathf.FloorToInt(timeInSeconds % 60f);
+        if (timeText != null)
+        {
+            timeText.text = $"{minutes:00}:{seconds:00}";
         }
     }
 
-    void UpdateScoreUI(int score)
+    void OnTimeUp()
     {
-        if (this.score != null)
+        if (gameManager != null)
         {
-            this.score.text = $"점수: {score}";
+            if (gameManager.CurrentProgress >= 0.7f) { /* GameManager가 처리 */ }
+            else { gameManager.OnTimeUp(); }
         }
-    }
-
-    /// <summary>
-    /// 다음 스테이지 UI 표시
-    /// </summary>
-    public void ShowNextStageUI()
-    {
-        ShowResultMessage("스테이지 완료!", "다음 스테이지로 진행하시겠습니까?");
-    }
-
-    /// <summary>
-    /// 게임 완료 UI 표시
-    /// </summary>
-    public void ShowGameCompleteUI(int finalScore)
-    {
-        ShowResultMessage("게임 완료!", $"스테이지 완전 클리어!\n최종 점수: {finalScore}");
         isGameEnded = true;
     }
 
-    /// <summary>
-    /// 게임 종료
-    /// </summary>
-    void QuitGame()
+    void UpdateForceUI(float force, ForceCalculator.ForceLevel level)
     {
-        Debug.Log("게임 종료");
-
-#if UNITY_EDITOR
-        UnityEditor.EditorApplication.isPlaying = false;
-#else
-        Application.Quit();
-#endif
+        if (forceSlider != null) forceSlider.value = force;
+        UpdateForceStatusImages(level);
     }
+
+    void SetupTimerForCurrentStage()
+    {
+        if (gameManager != null)
+        {
+            switch (gameManager.CurrentStage)
+            {
+                case 1: currentTimeLimit = 300f; break;
+                case 2: currentTimeLimit = 240f; break;
+                case 3: currentTimeLimit = 180f; break;
+                default: currentTimeLimit = 180f; break;
+            }
+        }
+    }
+
+    void UpdateForceStatusImages(ForceCalculator.ForceLevel level)
+    {
+        if (safeImage != null) safeImage.gameObject.SetActive(false);
+        if (warningImage != null) warningImage.gameObject.SetActive(false);
+        switch (level)
+        {
+            case ForceCalculator.ForceLevel.Weak:
+                if (safeImage != null) safeImage.gameObject.SetActive(true);
+                break;
+            case ForceCalculator.ForceLevel.Medium:
+            case ForceCalculator.ForceLevel.Strong:
+                if (warningImage != null) warningImage.gameObject.SetActive(true);
+                break;
+        }
+    }
+
+    void UpdateSuccessPointPosition()
+    {
+        if (successPointImage == null || progressSlider == null) return;
+        RectTransform sliderRect = progressSlider.GetComponent<RectTransform>();
+        RectTransform successRect = successPointImage.GetComponent<RectTransform>();
+        if (sliderRect != null && successRect != null)
+        {
+            float successPosition = sliderRect.rect.width * 0.9f;
+            successRect.anchoredPosition = new Vector2(successPosition, successRect.anchoredPosition.y);
+        }
+    }
+
+    void ShowGameplayUI()
+    {
+        if (gameplayPanel != null) gameplayPanel.SetActive(true);
+        if (resultPanel != null) resultPanel.SetActive(false);
+    }
+
+    public void OnProgressChanged(float progress) { UpdateProgressUI(progress); }
+    public void OnScoreChanged(int newScore) { UpdateScoreUI(newScore); }
+    void UpdateTimeUI(string status) { if (timeTitle != null) timeTitle.text = status; }
+    void UpdateProgressUI(float progress)
+    {
+        if (progressSlider != null) progressSlider.value = progress;
+        if (progressTitle != null) progressTitle.text = $"진행률: {progress * 100f:F1}%";
+    }
+    void UpdateScoreUI(int scoreValue) { if (this.score != null) this.score.text = $"점수: {scoreValue}"; }
 
     void OnDestroy()
     {
-        // 이벤트 구독 해제
         if (gameManager != null)
         {
             gameManager.OnGameStateChanged -= OnGameStateChanged;
@@ -557,8 +384,6 @@ public class UIManager : MonoBehaviour
             gameManager.OnProgressChanged -= OnProgressChanged;
             gameManager.OnScoreChanged -= OnScoreChanged;
         }
-
-        // [추가] 이벤트 구독 해제
         if (scoreSystem != null)
         {
             scoreSystem.OnAverageAccuracyChanged -= OnAverageAccuracyChanged;
