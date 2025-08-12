@@ -14,6 +14,11 @@ public class ToolSystem : MonoBehaviour
     public GameObject hammerPrefab;
     public LineRenderer chiselGuideLine;
 
+    [Header("Hammer Length Control")]
+    [Tooltip("해머의 가상 길이를 조절하여 조준을 보정합니다. 1.0은 원래 길이, 1.5는 50% 더 길어집니다.")]
+    [Range(1.0f, 3.0f)]
+    public float hammerLengthMultiplier = 2.2f;
+
     [Header("손 Visual 참조 (월드 좌표용)")]
     public Transform leftHandVisual;  // 왼손 Visual Transform 직접 참조
     public Transform rightHandVisual; // 오른손 Visual Transform 직접 참조
@@ -47,12 +52,18 @@ public class ToolSystem : MonoBehaviour
     // 도구 상태
     private GameObject chiselInstance;
     private GameObject hammerInstance;
+    private Transform hammerTip; // [추가] 생성된 망치의 '팁' 위치를 저장할 변수
     private Vector3 currentChiselTarget;
     private bool isChiselTargetValid = false;
+    // [추가] 도구가 이미 생성되었는지 확인하는 플래그
+    private bool areToolsCreated = false;
 
     // 채굴 중 상태
     private float lastMiningTime = 0f;
     private float miningCooldown = 0.5f;
+
+    private AimSystem aimSystem;
+    private float lastAccuracy = 1.0f; // 마지막으로 계산된 정확도 (기본값 100%)
 
     void Start()
     {
@@ -64,6 +75,15 @@ public class ToolSystem : MonoBehaviour
         // 시스템 참조 가져오기
         handController = FindFirstObjectByType<HandController>();
         forceCalculator = FindFirstObjectByType<ForceCalculator>();
+        aimSystem = FindFirstObjectByType<AimSystem>();
+
+        if (aimSystem != null)
+        {
+            aimSystem.OnAccuracyCalculated += (accuracy) => {
+                lastAccuracy = accuracy;
+                Debug.Log($"[ToolSystem] 정확도 업데이트: {accuracy:P0}");
+            };
+        }
 
         if (handController == null)
         {
@@ -93,10 +113,14 @@ public class ToolSystem : MonoBehaviour
         handController.OnHammerStrike += OnHammerStrike;
 
         // 도구 인스턴스 생성
-        CreateToolInstances();
+        //CreateToolInstances();
 
         // 미리보기 구체 설정
         SetupPreviewSphere();
+
+        // [추가] 초기에는 가이드라인과 미리보기를 숨깁니다.
+        if (chiselGuideLine != null) chiselGuideLine.gameObject.SetActive(false);
+        if (previewSphere != null) previewSphere.SetActive(false);
     }
 
     void CreateToolInstances()
@@ -127,6 +151,16 @@ public class ToolSystem : MonoBehaviour
         {
             hammerInstance = Instantiate(hammerPrefab);
             hammerInstance.name = "Hammer_Instance";
+
+            // [추가] 생성된 망치 인스턴스 내부에서 "HammerTip"이라는 이름의 자식 오브젝트를 찾습니다.
+            hammerTip = hammerInstance.transform.Find("HammerTip");
+
+            if (hammerTip == null)
+            {
+                // 만약 "HammerTip"을 못 찾으면, 경고를 출력하고 망치 자체를 팁으로 사용합니다.
+                Debug.LogWarning("망치 프리팹에서 'HammerTip' 자식 오브젝트를 찾을 수 없습니다. 망치 피봇을 기준으로 사용합니다.");
+                hammerTip = hammerInstance.transform;
+            }
 
             // 물리 비활성화 (손에 고정되므로)
             Rigidbody hammerRb = hammerInstance.GetComponent<Rigidbody>();
@@ -191,6 +225,28 @@ public class ToolSystem : MonoBehaviour
 
     void Update()
     {
+        // [추가] 아직 도구가 생성되지 않았다면, 생성을 시도합니다.
+        if (!areToolsCreated)
+        {
+            // HandController가 유효한 손 데이터를 받았는지 확인
+            if (handController != null && handController.HasReceivedValidData)
+            {
+                // 도구를 생성하고 플래그를 true로 설정하여 다시는 실행되지 않도록 함
+                CreateToolInstances();
+                areToolsCreated = true;
+
+                // 생성 후 가이드라인과 미리보기를 다시 활성화
+                if (chiselGuideLine != null) chiselGuideLine.gameObject.SetActive(true);
+                if (previewSphere != null) previewSphere.SetActive(true);
+            }
+            else
+            {
+                // 아직 손이 감지되지 않았으면 아무것도 하지 않고 대기
+                return;
+            }
+        }
+
+        // --- 아래는 기존 Update 로직 (도구가 생성된 후에만 실행됨) ---
         UpdateToolPositions();
         UpdateChiselTarget();
         UpdateVisualGuides();
@@ -407,16 +463,23 @@ public class ToolSystem : MonoBehaviour
             return;
         }
 
-        // 채굴 실행
-        ExecuteMining(currentChiselTarget, strikeDirection);
+        // 채굴 실행 (수정된 부분)
+        ExecuteMining(currentChiselTarget, strikeDirection, lastAccuracy); // 정확도 전달
+
+        // 사용 후 정확도 초기화 (다음 타격에 영향 없도록)
+        lastAccuracy = 1.0f;
 
         lastMiningTime = Time.time;
     }
 
-    void ExecuteMining(Vector3 miningPoint, Vector3 surfaceNormal)
+    void ExecuteMining(Vector3 miningPoint, Vector3 surfaceNormal, float accuracy) // accuracy 매개변수 추가
     {
-        // ForceCalculator에서 계산된 힘 가져오기
-        float calculatedForce = forceCalculator?.GetGemProtectionForce() ?? 20f;
+        // ForceCalculator에서 기본 힘 가져오기
+        float baseForce = forceCalculator?.GetGemProtectionForce() ?? 20f;
+
+        // 정확도에 따른 최종 힘 계산 (정확도 100% = 120% 보너스, 0% = 50% 페널티)
+        float accuracyModifier = Mathf.Lerp(0.5f, 1.2f, accuracy);
+        float finalForce = baseForce * accuracyModifier;
 
         // 현재 광물의 보석 보호 시스템에 충격 전달
         GameObject currentMineralBlock = FindCurrentMineralBlock();
@@ -425,7 +488,7 @@ public class ToolSystem : MonoBehaviour
             GemProtectionSystem gemProtectionSystem = currentMineralBlock.GetComponent<GemProtectionSystem>();
             if (gemProtectionSystem != null)
             {
-                gemProtectionSystem.CheckMiningImpactOnGems(miningPoint, calculatedForce);
+                gemProtectionSystem.CheckMiningImpactOnGems(miningPoint, finalForce);
             }
         }
 
@@ -441,8 +504,45 @@ public class ToolSystem : MonoBehaviour
         // 실제 조각 제거
         RemoveChunksAtPoint(miningPoint);
 
-        Debug.Log($"채굴 실행! 위치: {miningPoint}, 힘: {calculatedForce:F1}");
+        Debug.Log($"채굴 실행! 위치: {miningPoint}, 힘: {finalForce:F1}");
     }
+
+    /// <summary>
+    /// 현재 망치의 끝(Tip) 부분의 월드 좌표를 반환합니다.
+    /// 정확도 계산 시스템(AimSystem)에서 사용합니다.
+    /// </summary>
+    /// <returns>망치 끝의 월드 좌표</returns>
+    public Vector3 GetHammerTipPosition()
+    {
+        // [수정] 망치 길이 보정 로직 적용
+        if (hammerInstance != null && hammerTip != null)
+        {
+            // 1. 망치의 중심(피봇) 위치를 가져옵니다.
+            Vector3 hammerPivot = hammerInstance.transform.position;
+
+            // 2. 망치 중심에서 원래 'HammerTip'까지의 방향과 거리를 구합니다.
+            Vector3 originalTipVector = hammerTip.position - hammerPivot;
+
+            // 3. 이 벡터에 '길이 보정 배율'을 곱하여 새로운 가상 팁 위치를 계산합니다.
+            Vector3 correctedTipPosition = hammerPivot + (originalTipVector * hammerLengthMultiplier);
+
+            return correctedTipPosition;
+        }
+
+        // 비상시 대체 로직 (기존과 동일)
+        if (handController != null)
+        {
+            return handController.RightHandPosition;
+        }
+
+        return Vector3.zero;
+    }
+
+    public Vector3 GetCurrentChiselTarget()
+    {
+        return isChiselTargetValid ? currentChiselTarget : (chiselInstance != null ? chiselInstance.transform.position : Vector3.zero);
+    }
+
 
     void RemoveChunksAtPoint(Vector3 miningPoint)
     {
@@ -595,7 +695,31 @@ public class ToolSystem : MonoBehaviour
 
     void OnDrawGizmos()
     {
+        // 게임이 실행 중이 아닐 때는 아무것도 그리지 않습니다.
         if (!Application.isPlaying) return;
+
+        // [수정] 망치 길이 시각화 로직 추가
+        if (hammerInstance != null && hammerTip != null)
+        {
+            // 1. 실제 망치 피봇과 원래 팁 위치를 가져옵니다.
+            Vector3 hammerPivot = hammerInstance.transform.position;
+            Vector3 originalTipPos = hammerTip.position;
+
+            // 2. 보정된 가상 팁 위치를 계산합니다.
+            Vector3 correctedTipPos = GetHammerTipPosition();
+
+            // 3. 원래 망치 길이를 얇은 회색 선으로 그립니다.
+            Gizmos.color = Color.gray;
+            Gizmos.DrawLine(hammerPivot, originalTipPos);
+
+            // 4. 보정되어 늘어난 부분을 눈에 띄는 노란색 선으로 그립니다.
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawLine(originalTipPos, correctedTipPos);
+
+            // 5. 최종적으로 사용되는 '가상 팁'의 위치에 작은 녹색 구를 그려 명확히 표시합니다.
+            Gizmos.color = Color.green;
+            Gizmos.DrawSphere(correctedTipPos, 0.02f); // 2cm 크기의 구
+        }
 
         // 채굴 범위 시각화
         if (isChiselTargetValid)
