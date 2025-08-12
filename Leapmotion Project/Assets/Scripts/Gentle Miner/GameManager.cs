@@ -4,6 +4,7 @@ using System.Collections;
 /// <summary>
 /// 청크 기반 진행도 관리로 롤백된 GameManager
 /// MineralBlock의 ChunkCounter 이벤트를 다시 받아서 처리
+/// [수정] 정확도 이벤트 처리 및 시스템 연동
 /// </summary>
 public class GameManager : MonoBehaviour
 {
@@ -52,6 +53,8 @@ public class GameManager : MonoBehaviour
     private UIManager uiManager;
     private GemRevealSystem gemRevealSystem;
     private GemProtectionSystem gemProtectionSystem;
+    private ScoreSystem scoreSystem; // [추가]
+    private ToolSystem toolSystem; // [추가]
 
     // 이벤트들 (기존 복원)
     public System.Action<GameState> OnGameStateChanged;
@@ -77,7 +80,7 @@ public class GameManager : MonoBehaviour
         Debug.Log("=== GameManager 초기화 시작 ===");
 
         FindSystemReferences();
-        SubscribeToEvents();    // 추후 사용하거나 삭제할 메소드
+        SubscribeToEvents();
         StartCoroutine(StartGameSequence());
     }
 
@@ -86,6 +89,8 @@ public class GameManager : MonoBehaviour
         stageManager = FindFirstObjectByType<StageManager>();
         uiManager = FindFirstObjectByType<UIManager>();
         gemRevealSystem = FindFirstObjectByType<GemRevealSystem>();
+        scoreSystem = FindFirstObjectByType<ScoreSystem>(); // [추가]
+        toolSystem = FindFirstObjectByType<ToolSystem>(); // [추가]
 
         if (stageManager == null)
         {
@@ -104,8 +109,30 @@ public class GameManager : MonoBehaviour
     {
         // MineralBlock에서 오는 진행률 이벤트 구독은 
         // MineralBlock이 생성될 때 동적으로 처리
+
+        // [추가] ToolSystem의 정확도 이벤트 구독
+        if (toolSystem != null)
+        {
+            toolSystem.OnStrikeAccuracyCalculated += OnStrikeAccuracyCalculated;
+        }
+
         Debug.Log("이벤트 구독 완료");
     }
+
+    // [추가] 정확도 이벤트 핸들러
+    private void OnStrikeAccuracyCalculated(float accuracy)
+    {
+        if (scoreSystem != null)
+        {
+            scoreSystem.AddAccuracy(accuracy);
+        }
+
+        if (uiManager != null)
+        {
+            uiManager.UpdateLastAccuracyUI(accuracy);
+        }
+    }
+
 
     IEnumerator StartGameSequence()
     {
@@ -115,6 +142,12 @@ public class GameManager : MonoBehaviour
         if (stageManager != null)
         {
             stageManager.InitializeStage(currentStage);
+        }
+
+        // [추가] 새 스테이지 시작 시 점수 시스템에 알림
+        if (scoreSystem != null)
+        {
+            scoreSystem.StartNewStage();
         }
 
         // 현재 광물의 보석 보호 시스템 찾기
@@ -226,21 +259,27 @@ public class GameManager : MonoBehaviour
 
         Debug.Log($"채굴 완료! {progress * 100f:F1}% 달성 - 완벽한 완주!");
 
-        // 최종 보석 점수 계산 + 보너스
-        int finalGemScore = CalculateFinalGemScore() + 20; // 완벽 완주 보너스
-        currentScore = finalGemScore;
+        // [수정] ScoreSystem을 통해 점수 계산
+        if (scoreSystem != null)
+        {
+            currentScore = scoreSystem.CalculateStageScore(currentStage, true);
+        }
+        else
+        {
+            currentScore = CalculateFinalGemScore() + 20;
+        }
         OnScoreChanged?.Invoke(currentScore);
 
         // UIManager에 완료 알림
         if (uiManager != null)
         {
-            uiManager.ShowGameCompleteUI(finalGemScore);
+            uiManager.ShowGameCompleteUI(currentScore);
         }
 
         // 완벽 연출 시작 (특별 회전 + 보존)
         if (gemRevealSystem != null)
         {
-            gemRevealSystem.StartGemPerfectReveal(finalGemScore);
+            gemRevealSystem.StartGemPerfectReveal(currentScore);
         }
     }
 
@@ -505,5 +544,10 @@ public class GameManager : MonoBehaviour
     void OnDestroy()
     {
         // 이벤트 구독 해제는 MineralBlock에서 처리
+        // [추가] ToolSystem 이벤트 구독 해제
+        if (toolSystem != null)
+        {
+            toolSystem.OnStrikeAccuracyCalculated -= OnStrikeAccuracyCalculated;
+        }
     }
 }

@@ -4,6 +4,7 @@ using TMPro;
 
 /// <summary>
 /// 현재 UI 구조에 맞게 수정된 UI 관리 시스템
+/// [수정] 정확도 표시 UI 추가
 /// </summary>
 public class UIManager : MonoBehaviour
 {
@@ -23,6 +24,10 @@ public class UIManager : MonoBehaviour
     public Image safeImage;                 // Image - Safe
     public Image warningImage;              // Image - Warning
     public Image successPointImage;         // Image - Success Point
+
+    [Header("정확도 표시 UI")] // [추가]
+    public TextMeshProUGUI lastAccuracyText;
+    public TextMeshProUGUI averageAccuracyText;
 
     [Header("게임 설정")]
     [Range(60f, 600f)]
@@ -93,6 +98,12 @@ public class UIManager : MonoBehaviour
             gameManager.OnProgressChanged += OnProgressChanged;
             gameManager.OnScoreChanged += OnScoreChanged;
         }
+
+        // [추가] ScoreSystem의 평균 정확도 변경 이벤트 구독
+        if (scoreSystem != null)
+        {
+            scoreSystem.OnAverageAccuracyChanged += OnAverageAccuracyChanged;
+        }
     }
 
     void SetInitialUIState()
@@ -112,6 +123,12 @@ public class UIManager : MonoBehaviour
         UpdateScoreUI(0);
         UpdateForceUI(0f, ForceCalculator.ForceLevel.Weak);
 
+        // [추가] 정확도 UI 초기화
+        UpdateLastAccuracyUI(0f);
+        UpdateAverageAccuracyUI(0f);
+        if (lastAccuracyText != null) lastAccuracyText.text = "정확도: -";
+        if (averageAccuracyText != null) averageAccuracyText.text = "평균 정확도: -";
+
         // 성공 포인트 이미지 70% 위치에 표시
         UpdateSuccessPointPosition();
 
@@ -129,6 +146,38 @@ public class UIManager : MonoBehaviour
         // 보석 상태 업데이트 (향후 확장용)
         UpdateGemStatusDisplay();
     }
+
+    // [추가] 마지막 타격 정확도 UI 업데이트
+    public void UpdateLastAccuracyUI(float accuracy)
+    {
+        if (lastAccuracyText != null)
+        {
+            lastAccuracyText.text = $"정확도: {accuracy:P0}";
+        }
+    }
+
+    // [추가] 평균 정확도 UI 업데이트 (이벤트 핸들러)
+    private void OnAverageAccuracyChanged(float newAverage)
+    {
+        UpdateAverageAccuracyUI(newAverage);
+    }
+
+    // [추가] 평균 정확도 UI 업데이트
+    public void UpdateAverageAccuracyUI(float accuracy)
+    {
+        if (averageAccuracyText != null)
+        {
+            if (accuracy == 0)
+            {
+                averageAccuracyText.text = "평균 정확도: -";
+            }
+            else
+            {
+                averageAccuracyText.text = $"평균 정확도: {accuracy:P0}";
+            }
+        }
+    }
+
 
     void UpdateForceDisplay()
     {
@@ -160,7 +209,7 @@ public class UIManager : MonoBehaviour
         UpdateTimeColor(remainingTime);
 
         // 시간 종료 체크
-        if (remainingTime <= 0f &&!isGameEnded)
+        if (remainingTime <= 0f && !isGameEnded)
         {
             OnTimeUp();
         }
@@ -507,6 +556,12 @@ public class UIManager : MonoBehaviour
             gameManager.OnStageChanged -= OnStageChanged;
             gameManager.OnProgressChanged -= OnProgressChanged;
             gameManager.OnScoreChanged -= OnScoreChanged;
+        }
+
+        // [추가] 이벤트 구독 해제
+        if (scoreSystem != null)
+        {
+            scoreSystem.OnAverageAccuracyChanged -= OnAverageAccuracyChanged;
         }
     }
 }

@@ -1,9 +1,11 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
 
 /// <summary>
 /// 점수 계산 및 저장 시스템 (기획서의 핵심 클래스)
 /// 보석 상태에 따른 점수 계산, 하이스코어 관리, 성취도 추적
+/// [수정] 정확도 기반 보너스 점수 시스템 추가
 /// </summary>
 public class ScoreSystem : MonoBehaviour
 {
@@ -19,6 +21,7 @@ public class ScoreSystem : MonoBehaviour
         [Header("보너스 점수")]
         public int perfectStageBonus = 50;   // 100% 완료 보너스
         public int speedBonusMax = 25;       // 빠른 완료 보너스 최대값
+        public int accuracyBonusMax = 20;    // 정확도 보너스 최대값
         public int stageMultiplier = 1;      // 스테이지별 배율
 
         [Header("페널티")]
@@ -48,10 +51,16 @@ public class ScoreSystem : MonoBehaviour
     private List<int> stageScores = new List<int>();
     private float stageStartTime = 0f;
 
+    // [추가] 정확도 기록
+    private List<float> stageAccuracies = new List<float>();
+    public float AverageAccuracy { get; private set; } = 0f;
+
+
     // 이벤트
     public System.Action<int> OnScoreChanged;
     public System.Action<int> OnNewHighScore;
     public System.Action<int> OnStageScoreCalculated;
+    public System.Action<float> OnAverageAccuracyChanged; // [추가]
 
     // 프로퍼티
     public int CurrentScore => currentScore;
@@ -82,6 +91,17 @@ public class ScoreSystem : MonoBehaviour
     {
         // 플레이 시간 추적
         totalPlayTime += Time.deltaTime;
+    }
+
+    /// <summary>
+    /// [추가] 타격 정확도를 기록하고 평균을 업데이트
+    /// </summary>
+    public void AddAccuracy(float accuracy)
+    {
+        stageAccuracies.Add(accuracy);
+        AverageAccuracy = stageAccuracies.Average();
+        OnAverageAccuracyChanged?.Invoke(AverageAccuracy);
+        Debug.Log($"정확도 추가: {accuracy:P0}. 현재 평균 정확도: {AverageAccuracy:P0}");
     }
 
     /// <summary>
@@ -207,6 +227,16 @@ public class ScoreSystem : MonoBehaviour
         int speedBonus = CalculateSpeedBonus(stageTime);
         bonus += speedBonus;
 
+        // [추가] 정확도 보너스
+        int accuracyBonus = 0;
+        if (stageAccuracies.Count > 0)
+        {
+            // 평균 정확도가 50%일때 0점, 100%일때 최대 보너스, 0%일때 최대 페널티
+            accuracyBonus = Mathf.RoundToInt((AverageAccuracy - 0.5f) * 2 * scoreConfig.accuracyBonusMax);
+            Debug.Log($"정확도 보너스: +{accuracyBonus} (평균: {AverageAccuracy:P0})");
+        }
+        bonus += accuracyBonus;
+
         return bonus;
     }
 
@@ -266,6 +296,12 @@ public class ScoreSystem : MonoBehaviour
     {
         stageStartTime = Time.time;
         stageScore = 0;
+
+        // [추가] 정확도 기록 리셋
+        stageAccuracies.Clear();
+        AverageAccuracy = 0f;
+        OnAverageAccuracyChanged?.Invoke(AverageAccuracy);
+
         Debug.Log("새 스테이지 점수 추적 시작");
     }
 
@@ -375,6 +411,7 @@ public class ScoreSystem : MonoBehaviour
         Debug.Log($"파괴된 보석: {destroyedGems}개");
         Debug.Log($"플레이 시간: {totalPlayTime:F1}초");
         Debug.Log($"성취도: {GetAchievementPercentage():F1}%");
+        Debug.Log($"평균 정확도: {AverageAccuracy:P0}");
         Debug.Log("========================");
     }
 
