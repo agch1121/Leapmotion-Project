@@ -3589,9 +3589,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cleanupInterval: 2
-  maxDistanceFromOrigin: 10
-  minGroundHeight: -5
-  staticTimeThreshold: 3
+  maxDistanceFromOrigin: 5
+  minGroundHeight: 0
+  staticTimeThreshold: 5
   minVelocityThreshold: 0.1
   maxCleanupsPerFrame: 5
   enableDebugLogs: 1

@@ -895,7 +895,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: 2100000, guid: dc5152bdcd3704e418a0bbba919ffd2d, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -1829,6 +1829,10 @@ PrefabInstance:
     - target: {fileID: 54100549237044413, guid: ec2e445810d35ab4e9d4e1baed01f602, type: 3}
       propertyPath: m_LocalPosition.z
       value: 9.801
+      objectReference: {fileID: 0}
+    - target: {fileID: 1229831998486739800, guid: ec2e445810d35ab4e9d4e1baed01f602, type: 3}
+      propertyPath: m_Convex
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1763938347093473912, guid: ec2e445810d35ab4e9d4e1baed01f602, type: 3}
       propertyPath: m_LocalPosition.x
@@ -8605,7 +8609,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a8b6194dbf9ec1d429558ea30b39adcf, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  rotationAmount: 10
+  rotationAmount: 45
 --- !u!4 &887198358
 Transform:
   m_ObjectHideFlags: 0
