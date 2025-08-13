@@ -6,7 +6,7 @@ using System.Collections.Generic;
 
 /// <summary>
 /// UI 관리 시스템
-/// [수정] 누락된 타이머 색상 변수 선언 추가
+/// [수정] 누락된 타이머 색상 변수 선언 추가 및 실패 시 다음 스테이지 버튼 비활성화
 /// </summary>
 public class UIManager : MonoBehaviour
 {
@@ -133,7 +133,6 @@ public class UIManager : MonoBehaviour
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < gems.Length; i++)
         {
-            // [수정] 긴 이름에서 첫 단어(보석 타입)만 추출
             string simpleName = gems[i].gemName.Split(' ')[0];
             sb.Append(simpleName);
             if (i < gems.Length - 1) sb.Append(" | ");
@@ -175,17 +174,20 @@ public class UIManager : MonoBehaviour
             case GameManager.GameState.Success:
                 UpdateTimeUI("채굴 성공!");
                 ShowResultPanelWithDetails("채굴 성공!", "", gameManager.GetScoreSystem());
+                if (nextButton != null) nextButton.SetActive(true); // 성공 시 버튼 활성화
                 isGameEnded = true;
                 break;
             case GameManager.GameState.Perfect:
                 UpdateTimeUI("완벽한 채굴!");
                 ShowResultPanelWithDetails("완벽한 채굴!", "", gameManager.GetScoreSystem());
+                if (nextButton != null) nextButton.SetActive(true); // 완벽한 성공 시 버튼 활성화
                 isGameEnded = true;
                 break;
             case GameManager.GameState.Failed:
                 string failMessage = remainingTime <= 0 ? "시간 초과" : "보석 파괴";
                 UpdateTimeUI("채굴 실패..");
                 ShowResultPanelWithDetails("채굴 실패", failMessage, null);
+                if (nextButton != null) nextButton.SetActive(false); // <<-- 이 부분 추가
                 isGameEnded = true;
                 break;
         }

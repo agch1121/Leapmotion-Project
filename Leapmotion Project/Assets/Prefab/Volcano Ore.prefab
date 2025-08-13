@@ -8304,7 +8304,7 @@ MonoBehaviour:
   - gemObject: {fileID: 5176615243416997418}
     gemName: "\uB8E8\uBE44 \uD558\uD2B8"
     damageThreshold: 15
-    protectionRadius: 0.2
+    protectionRadius: 0.4
     freeHitCount: 1
     currentCondition: 100
     perfectMaterial: {fileID: 0}

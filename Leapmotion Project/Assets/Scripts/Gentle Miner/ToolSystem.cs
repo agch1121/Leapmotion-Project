@@ -526,6 +526,10 @@ public class ToolSystem : MonoBehaviour
     {
         if (chunk == null) return;
 
+        // [핵심 수정] 청크를 부모(광물)로부터 분리하여 독립적인 오브젝트로 만듭니다.
+        // 이렇게 해야 ChunkCleaner가 이 조각을 '정리 대상'으로 인식할 수 있습니다.
+        chunk.transform.parent = null;
+
         Joint[] joints = chunk.GetComponents<Joint>();
         foreach (Joint joint in joints)
         {

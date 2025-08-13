@@ -12761,8 +12761,8 @@ MonoBehaviour:
   gems:
   - gemObject: {fileID: 1060411647888881698}
     gemName: Gem
-    damageThreshold: 15
-    protectionRadius: 0.4
+    damageThreshold: 30
+    protectionRadius: 0.2
     freeHitCount: 1
     currentCondition: 100
     perfectMaterial: {fileID: 0}
@@ -12790,6 +12790,8 @@ MonoBehaviour:
   currentActiveChunks: 0
   currentRemovedChunks: 0
   miningProgress: 0
+  targetChunkCount: 100
+  useCustomTarget: 1
   enableDebugLogs: 1
   enableProgressDebug: 1
   autoRefreshCount: 1
