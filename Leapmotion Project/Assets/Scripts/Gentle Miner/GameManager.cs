@@ -51,6 +51,8 @@ public class GameManager : MonoBehaviour
     public int CurrentScore => currentScore;
     public bool IsGameActive => currentState == GameState.Playing;
     public bool IsGameStarted => gameStarted;
+    public bool IsGameSucceeded => gameSucceeded;
+    public bool IsGameCompleted => gameCompleted;
 
     public ScoreSystem GetScoreSystem() { return scoreSystem; }
 

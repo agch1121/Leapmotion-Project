@@ -235,7 +235,7 @@ public class ToolSystem : MonoBehaviour
         UpdateChiselTarget();
         UpdateVisualGuides();
         HandleSafetySystem();
-        if (!GameManager.Instance.IsGameStarted)
+        if (!GameManager.Instance.IsGameStarted || GameManager.Instance.IsGameSucceeded || GameManager.Instance.IsGameCompleted)
             HideToolInstances();
         else
         {
