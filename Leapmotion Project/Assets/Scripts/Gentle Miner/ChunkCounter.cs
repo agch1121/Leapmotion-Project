@@ -232,45 +232,6 @@ public class ChunkCounter : MonoBehaviour
     public bool IsMiningProgressOver(float percentage) => GetMiningProgressPercent() >= percentage;
     public bool IsGemExposed() => miningProgress >= 0.7f;
 
-    /// <summary>
-    /// 즉시 Progress 강제 업데이트 (테스트용)
-    /// </summary>
-    [ContextMenu("즉시 Progress 업데이트")]
-    public void ForceRefresh()
-    {
-        RefreshChunkCount();
-        Debug.Log($"강제 업데이트 완료! Progress: {GetMiningProgressPercent():F1}%");
-    }
-
-    [ContextMenu("카운터 리셋")]
-    public void ResetCounter()
-    {
-        trackedChunks.Clear();
-        InitializeCounter();
-        Debug.Log("ChunkCounter 리셋 완료!");
-    }
-
-    [ContextMenu("상세 상태 출력")]
-    public void PrintDetailedStatus()
-    {
-        var (connected, anchored, broken, detached, disabled) = GetDetailedChunkCount();
-
-        Debug.Log("=== ChunkCounter 상세 상태 ===");
-        Debug.Log($"시작 시 총 조각: {totalChunksAtStart}개");
-        Debug.Log($"현재 활성 조각: {currentActiveChunks}개");
-        Debug.Log($"제거된 조각: {currentRemovedChunks}개");
-        Debug.Log($"--- 상세 분류 ---");
-        Debug.Log($"연결된 조각 (Connected): {connected}개");
-        Debug.Log($"고정된 조각 (Anchored): {anchored}개");
-        Debug.Log($"손상된 조각 (Broken): {broken}개");
-        Debug.Log($"분리된 조각 (Detached): {detached}개");
-        Debug.Log($"비활성화된 조각 (Disabled): {disabled}개");
-        Debug.Log($"채굴 진행률: {GetMiningProgressPercent():F1}%");
-        Debug.Log($"보석 노출 여부: {(IsGemExposed() ? "예" : "아니오")}");
-        Debug.Log($"완전 채굴 여부: {(IsFullyMined ? "예" : "아니오")}");
-        Debug.Log("==============================");
-    }
-
     // 기존 호환성을 위한 함수
     public void NotifyChunkWillBeDestroyed(ChunkNode chunk)
     {

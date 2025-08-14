@@ -67,7 +67,7 @@ public class AimSystem : MonoBehaviour
         else // isTracking == true
         {
             // [추적 중]
-            // [수정] 현재 '망치'와 추적 시작점 사이의 거리를 계산하여 최소 거리를 갱신합니다.
+            // 현재 '망치'와 추적 시작점 사이의 거리를 계산하여 최소 거리를 갱신
             float currentDistanceToStartPoint = Vector3.Distance(hammerPosition, lastTrackedChiselPosition);
             if (currentDistanceToStartPoint < minDistance)
             {
@@ -87,22 +87,22 @@ public class AimSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// 정확도 추적을 시작합니다.
+    /// 정확도 추적 시작
     /// </summary>
-    // [수정] 첫 번째 매개변수 이름을 handPos에서 toolPos로 변경하여 명확화
+    // 첫 번째 매개변수 이름을 handPos에서 toolPos로 변경하여 명확화
     private void StartTracking(Vector3 toolPos, Vector3 chiselPos)
     {
         isTracking = true;
         entryTime = Time.time;
         lastTrackedChiselPosition = chiselPos;
-        // [수정] 초기 최소 거리를 '망치'와 끌의 거리로 설정
+        // 초기 최소 거리를 '망치'와 끌의 거리로 설정
         minDistance = Vector3.Distance(toolPos, lastTrackedChiselPosition);
         Debug.Log($"[AimSystem] 정확도 추적 시작. (망치 기준) 초기 거리: {minDistance:F3}m");
     }
 
 
     /// <summary>
-    /// 정확도 추적을 중지합니다.
+    /// 정확도 추적 중지
     /// </summary>
     private void StopTracking()
     {
@@ -110,7 +110,7 @@ public class AimSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// 기록된 최소 거리를 바탕으로 정확도를 계산하고 이벤트를 발생시킵니다.
+    /// 기록된 최소 거리를 바탕으로 정확도를 계산하고 이벤트를 발생
     /// </summary>
     private void EvaluateAndFireEvent()
     {
@@ -124,19 +124,6 @@ public class AimSystem : MonoBehaviour
         // 이벤트 호출
         OnAccuracyCalculated?.Invoke(accuracy);
     }
-
-    /// <summary>
-    /// 타격 이벤트 발생 시 정확도를 강제로 평가하는 외부 호출용 함수 (대안)
-    /// </summary>
-    public void EvaluateOnStrike()
-    {
-        if (!isTracking) return;
-
-        Debug.Log("[AimSystem] OnHammerStrike 시점 강제 평가 실행!");
-        EvaluateAndFireEvent();
-        StopTracking();
-    }
-
 
     // 디버그용 시각화
     void OnDrawGizmos()

@@ -64,10 +64,10 @@ public class StageManager : MonoBehaviour
     {
         stageConfigs = new StageConfig[3];
 
-        // 스테이지 1: 쉬움 - 다이아몬드
+        // 스테이지 1: 쉬움 - 에메랄드
         stageConfigs[0] = new StageConfig
         {
-            stageName = "다이아몬드 광산",
+            stageName = "에메랄드 광산",
             description = "첫 번째 채굴 도전 - 조심스럽게 접근하세요",
             mineralHardness = 1.0f,
             gemCount = 2,
@@ -78,10 +78,10 @@ public class StageManager : MonoBehaviour
             jointBreakForce = 40f
         };
 
-        // 스테이지 2: 보통 - 에메랄드
+        // 스테이지 2: 보통 - 다이아몬드
         stageConfigs[1] = new StageConfig
         {
-            stageName = "에메랄드 동굴",
+            stageName = "다이아몬드 동굴",
             description = "더 단단한 광물 - 정밀한 작업이 필요합니다",
             mineralHardness = 1.3f,
             gemCount = 3,
@@ -374,30 +374,4 @@ public class StageManager : MonoBehaviour
         Debug.Log($"스테이지 {stageNumber} 완료!");
         OnStageCompleted?.Invoke(stageNumber);
     }
-
-    [ContextMenu("현재 스테이지 정보")]
-    public void PrintCurrentStageInfo()
-    {
-        StageConfig config = GetCurrentStageConfig();
-        if (config != null)
-        {
-            Debug.Log("=== 현재 스테이지 정보 ===");
-            Debug.Log($"이름: {config.stageName}");
-            Debug.Log($"설명: {config.description}");
-            Debug.Log($"경도: {config.mineralHardness}");
-            Debug.Log($"보석 수: {config.gemCount}");
-            Debug.Log($"품질: {config.gemQuality}");
-            Debug.Log($"보호 반경: {config.gemProtectionRadius}");
-            Debug.Log("========================");
-        }
-    }
-
-    [ContextMenu("스테이지 1로 초기화")]
-    public void InitializeStage1() => InitializeStage(1);
-
-    [ContextMenu("스테이지 2로 초기화")]
-    public void InitializeStage2() => InitializeStage(2);
-
-    [ContextMenu("스테이지 3으로 초기화")]
-    public void InitializeStage3() => InitializeStage(3);
 }

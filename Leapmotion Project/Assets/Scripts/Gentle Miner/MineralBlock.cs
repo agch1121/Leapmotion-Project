@@ -159,7 +159,7 @@ public class MineralBlock : MonoBehaviour
     }
 
     /// <summary>
-    /// HandController에서 발생하는 망치 타격 이벤트 처리 - 강화된 버전
+    /// HandController에서 발생하는 망치 타격 이벤트 처리
     /// </summary>
     public void OnHammerStrike(Vector3 position, Vector3 direction, float strikeForce)
     {
@@ -199,7 +199,7 @@ public class MineralBlock : MonoBehaviour
             audioSource.PlayOneShot(miningSound, volume);
         }
 
-        // 4. 실제 조각 제거 (더 관대함)
+        // 4. 실제 조각 제거
         RemoveChunksForce(miningPoint, strikeForce, surfaceNormal);
     }
 
@@ -213,7 +213,7 @@ public class MineralBlock : MonoBehaviour
     }
 
     /// <summary>
-    /// 보석 보호용 힘 계산 (더 관대하게 조정)
+    /// 보석 보호용 힘 계산
     /// </summary>
     float CalcAdjustedForce(float strikeForce)
     {
@@ -354,7 +354,7 @@ public class MineralBlock : MonoBehaviour
     }
 
     /// <summary>
-    /// 힘을 고려한 조각 제거 (더 관대함)
+    /// 힘을 고려한 조각 제거
     /// </summary>
     void RemoveChunksForce(Vector3 miningPoint, float strikeForce, Vector3 surfaceNormal)
     {

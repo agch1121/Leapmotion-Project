@@ -234,19 +234,4 @@ public class GripCalculator : MonoBehaviour
             return FingerCurlValues[fingerIndex];
         return 0f;
     }
-
-    [ContextMenu("현재 쥐는 강도 상태 출력")]
-    public void PrintGripStatus()
-    {
-        Debug.Log("=== 커스텀 쥐는 강도 상태 ===");
-        Debug.Log($"최종 쥐는 강도: {CustomGrabStrength:F3}");
-        Debug.Log($"민감도: {sensitivity}");
-        Debug.Log($"엄지 가중치: {thumbWeight}");
-
-        for (int i = 0; i < FingerCurlValues.Length; i++)
-        {
-            Debug.Log($"{fingerNames[i]}: {FingerCurlValues[i]:F3}");
-        }
-        Debug.Log("===========================");
-    }
 }

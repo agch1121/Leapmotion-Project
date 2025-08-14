@@ -56,7 +56,7 @@ public class GemRevealSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// 게임 시작 시 보석 미리보기 (파괴 절대 없음)
+    /// 게임 시작 시 보석 미리보기
     /// </summary>
     public void StartGemPreview()
     {
@@ -512,7 +512,7 @@ public class GemRevealSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Test.cs의 마우스 클릭과 정확히 동일한 효과 시뮬레이션
+    /// 마우스 클릭 시뮬레이션
     /// </summary>
     void SimulateMouseClick()
     {

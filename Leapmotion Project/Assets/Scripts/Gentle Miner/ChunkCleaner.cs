@@ -29,7 +29,7 @@ public class ChunkCleaner : MonoBehaviour
     private Vector3 originPosition;
     private HashSet<GameObject> vanishingChunks = new HashSet<GameObject>();
 
-    // ▼▼▼▼▼ [수정됨] ChunkNode의 내부 상태를 읽기 위한 변수 추가 ▼▼▼▼▼
+    // ChunkNode의 내부 상태를 읽기 위한 변수 추가
     private FieldInfo stateFieldInfo;
 
     void Start()
@@ -42,13 +42,13 @@ public class ChunkCleaner : MonoBehaviour
             Debug.Log($"ChunkCleaner 시작 - {cleanupInterval}초마다 정리 작업 수행");
     }
 
-    // ▼▼▼▼▼ [신규] ChunkNode의 private 필드에 접근하기 위한 리플렉션 초기화 메서드 ▼▼▼▼▼
+    // ChunkNode의 private 필드에 접근하기 위한 리플렉션 초기화 메서드
     void InitializeReflection()
     {
         try
         {
             System.Type chunkNodeType = typeof(ChunkNode);
-            // ChunkNode 스크립트의 내부 변수인 '_state' 필드 정보를 가져옵니다.
+            // ChunkNode 스크립트의 내부 변수인 '_state' 필드 정보를 가져옴
             stateFieldInfo = chunkNodeType.GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
         }
         catch (System.Exception e)
@@ -57,12 +57,12 @@ public class ChunkCleaner : MonoBehaviour
         }
     }
 
-    // ▼▼▼▼▼ [신규] 리플렉션을 통해 ChunkNode의 현재 상태를 가져오는 메서드 ▼▼▼▼▼
+    // 리플렉션을 통해 ChunkNode의 현재 상태를 가져오는 메서드
     public ChunkNode.ChunkState GetChunkState(ChunkNode chunk)
     {
         if (stateFieldInfo == null || chunk == null)
         {
-            // 리플렉션에 실패하면, 부모가 없는지를 기준으로 상태를 추정합니다.
+            // 리플렉션에 실패하면, 부모가 없는지를 기준으로 상태를 추정.
             return chunk.transform.parent == null ? ChunkNode.ChunkState.Detached : ChunkNode.ChunkState.Connected;
         }
 
@@ -129,7 +129,6 @@ public class ChunkCleaner : MonoBehaviour
         }
     }
 
-    // ▼▼▼▼▼ [수정됨] Detached 상태인 조각도 찾도록 로직 변경 ▼▼▼▼▼
     /// <summary>
     /// 모든 정리 대상 조각 오브젝트 찾기 (부모가 없거나, 상태가 Detached인 경우)
     /// </summary>
@@ -142,8 +141,8 @@ public class ChunkCleaner : MonoBehaviour
         {
             if (chunk == null || chunk.gameObject == null) continue;
 
-            // 조건 1: 부모가 없는 경우 (기존 로직)
-            // 조건 2: ChunkNode의 내부 상태가 Detached인 경우 (새로운 로직)
+            // 조건 1: 부모가 없는 경우
+            // 조건 2: ChunkNode의 내부 상태가 Detached인 경우
             if (chunk.transform.parent == null || GetChunkState(chunk) == ChunkNode.ChunkState.Detached)
             {
                 detachedChunks.Add(chunk.gameObject);

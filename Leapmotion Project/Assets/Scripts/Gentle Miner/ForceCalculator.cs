@@ -122,7 +122,7 @@ public class ForceCalculator : MonoBehaviour
         float rawVelocity = handController.RightHandVelocity.magnitude;
         NormalizedVelocity = NormalizeVelocity(rawVelocity);
 
-        // 3. 기획서 공식 적용: 최종 채굴 힘 = 쥠 강도 + 속도
+        // 3. 최종 채굴 힘 = 쥠 강도 + 속도
         CurrentForce = (NormalizedGripStrength * gripStrengthWeight) +
                       (NormalizedVelocity * velocityWeight);
 
@@ -246,54 +246,6 @@ public class ForceCalculator : MonoBehaviour
     {
         customGripMultiplier = Mathf.Clamp(multiplier, 0.1f, 3.0f);
         Debug.Log($"커스텀 쥐는 강도 배율 설정: {customGripMultiplier:F1}");
-    }
-
-    [ContextMenu("약한 힘 테스트 (30%)")]
-    public void TestWeakForce()
-    {
-        CurrentForce = 0.3f;
-        UpdateForceLevel();
-        Debug.Log($"테스트 힘 설정: {CurrentForce:F2} ({CurrentForceLevel})");
-    }
-
-    [ContextMenu("보통 힘 테스트 (70%)")]
-    public void TestMediumForce()
-    {
-        CurrentForce = 0.7f;
-        UpdateForceLevel();
-        Debug.Log($"테스트 힘 설정: {CurrentForce:F2} ({CurrentForceLevel})");
-    }
-
-    [ContextMenu("강한 힘 테스트 (90%)")]
-    public void TestStrongForce()
-    {
-        CurrentForce = 0.9f;
-        UpdateForceLevel();
-        Debug.Log($"테스트 힘 설정: {CurrentForce:F2} ({CurrentForceLevel})");
-    }
-
-    [ContextMenu("현재 힘 상태 출력")]
-    public void PrintCurrentForceStatus()
-    {
-        var status = GetForceStatus();
-        string gripSystem = useCustomGripCalculator && gripCalculator != null ? "커스텀" : "기본";
-
-        Debug.Log("=== 현재 힘 상태 ===");
-        Debug.Log($"쥐는 강도 시스템: {gripSystem}");
-        Debug.Log($"힘: {status.force * 100f:F1}%");
-        Debug.Log($"레벨: {status.level}");
-        Debug.Log($"안전: {status.isSafe}");
-        Debug.Log($"설명: {status.description}");
-        Debug.Log($"원본 쥐는 강도: {RawGripStrength:F2}");
-        Debug.Log($"조정된 쥐는 강도: {AdjustedGripStrength:F2}");
-        Debug.Log($"속도 기여분: {NormalizedVelocity:F2}");
-        Debug.Log("===================");
-    }
-
-    [ContextMenu("쥐는 강도 시스템 전환")]
-    public void ToggleGripSystem()
-    {
-        SetCustomGripEnabled(!useCustomGripCalculator);
     }
 
     void OnDrawGizmos()

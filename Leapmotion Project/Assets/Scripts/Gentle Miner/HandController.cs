@@ -63,7 +63,7 @@ public class HandController : MonoBehaviour
     // 타격 감지
     public bool IsStrikeDetected { get; private set; }
     private bool wasGripping = false;
-    // [추가] 손 데이터 수신 여부를 외부에 알리기 위한 public 프로퍼티
+    // 손 데이터 수신 여부를 외부에 알리기 위한 public 프로퍼티
     public bool HasReceivedValidData { get; private set; } = false;
 
     // 이벤트
@@ -272,7 +272,7 @@ public class HandController : MonoBehaviour
                     RightHandVelocity = velocity * 0.001f; // mm/s to m/s
                 }
 
-                // [추가] 유효한 데이터를 한 번이라도 받았다면, 플래그를 true로 설정합니다.
+                // 유효한 데이터를 한 번이라도 받았다면, 플래그를 true로 설정
                 if (dataProcessed && !HasReceivedValidData)
                 {
                     HasReceivedValidData = true;
@@ -594,25 +594,6 @@ public class HandController : MonoBehaviour
             return $"커스텀 (민감도: {gripCalculator.sensitivity:F1})";
         }
         return "기본 Leap Motion";
-    }
-
-    [ContextMenu("쥐는 강도 시스템 전환")]
-    public void ToggleGripSystem()
-    {
-        SetCustomGripEnabled(!useCustomGrabStrength);
-    }
-
-    [ContextMenu("현재 손 상태 출력")]
-    public void PrintCurrentHandStatus()
-    {
-        Debug.Log("=== 현재 손 상태 ===");
-        Debug.Log($"쥐는 강도 시스템: {GetGripSystemInfo()}");
-        Debug.Log($"왼손 위치: {LeftHandPosition:F2}");
-        Debug.Log($"오른손 위치: {RightHandPosition:F2}");
-        Debug.Log($"쥐는 강도: {RightHandGrabStrength:F2}");
-        Debug.Log($"손 속도: {RightHandVelocity.magnitude:F2}");
-        Debug.Log($"타격 감지: {IsStrikeDetected}");
-        Debug.Log("===================");
     }
 
     void OnDrawGizmos()
