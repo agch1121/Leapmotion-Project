@@ -1,266 +1,241 @@
 using LibreFracture;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection; // ë¦¬í”Œë ‰ì…˜ ì‚¬ìš©ì„ ìœ„í•´ ì¶”ê°€
 using UnityEngine;
 
 /// <summary>
-/// ¶³¾îÁ®³ª¿Â Á¶°¢µéÀ» ÀÚµ¿À¸·Î Á¤¸®ÇÏ´Â ½Ã½ºÅÛ
+/// ë–¨ì–´ì ¸ë‚˜ì˜¨ ì¡°ê°ë“¤ì„ ìë™ìœ¼ë¡œ ì •ë¦¬í•˜ëŠ” ì‹œìŠ¤í…œ (ë¹„í™œì„±í™” ë°©ì‹)
+/// Detached ìƒíƒœì¸ ì¡°ê°ë„ í¬í•¨í•˜ì—¬ ì •ë¦¬í•©ë‹ˆë‹¤.
 /// </summary>
 public class ChunkCleaner : MonoBehaviour
 {
-    [Header("Á¤¸® ¼³Á¤")]
-    public float cleanupInterval = 2f; // Á¤¸® ÀÛ¾÷ °£°İ (ÃÊ)
-    public float maxDistanceFromOrigin = 10f; // ¿øÁ¡¿¡¼­ ÀÌ °Å¸® ÀÌ»ó ¶³¾îÁö¸é »èÁ¦
-    public float minGroundHeight = -5f; // ÀÌ ³ôÀÌ ¾Æ·¡·Î ¶³¾îÁö¸é »èÁ¦
-    public float staticTimeThreshold = 3f; // ÀÌ ½Ã°£µ¿¾È ¿òÁ÷ÀÌÁö ¾ÊÀ¸¸é »èÁ¦
-    public float minVelocityThreshold = 0.1f; // ÀÌ ¼Óµµ ÀÌÇÏ¸é Á¤ÀûÀ¸·Î °£ÁÖ
+    [Header("ì •ë¦¬ ì„¤ì •")]
+    public float cleanupInterval = 2f; // ì •ë¦¬ ì‘ì—… ê°„ê²© (ì´ˆ)
+    public float maxDistanceFromOrigin = 10f; // ì›ì ì—ì„œ ì´ ê±°ë¦¬ ì´ìƒ ë–¨ì–´ì§€ë©´ ì‚­ì œ
+    public float minGroundHeight = -5f; // ì´ ë†’ì´ ì•„ë˜ë¡œ ë–¨ì–´ì§€ë©´ ì‚­ì œ
+    public float staticTimeThreshold = 3f; // ì´ ì‹œê°„ë™ì•ˆ ì›€ì§ì´ì§€ ì•Šìœ¼ë©´ ì‚­ì œ
+    public float minVelocityThreshold = 0.1f; // ì´ ì†ë„ ì´í•˜ë©´ ì •ì ìœ¼ë¡œ ê°„ì£¼
 
-    [Header("¼º´É ¼³Á¤")]
-    public int maxCleanupsPerFrame = 5; // ÇÑ ¹ø¿¡ ÃÖ´ë Á¤¸®ÇÒ Á¶°¢ ¼ö
+    [Header("ì„±ëŠ¥ ì„¤ì •")]
+    public int maxCleanupsPerFrame = 5; // í•œ ë²ˆì— ìµœëŒ€ ì •ë¦¬í•  ì¡°ê° ìˆ˜
 
-    [Header("µğ¹ö±×")]
+    [Header("ë””ë²„ê·¸")]
     public bool enableDebugLogs = true;
     public bool enableDebugVisualization = false;
 
     private Dictionary<GameObject, float> staticChunks = new Dictionary<GameObject, float>();
     private Vector3 originPosition;
+    private HashSet<GameObject> vanishingChunks = new HashSet<GameObject>();
+
+    // â–¼â–¼â–¼â–¼â–¼ [ìˆ˜ì •ë¨] ChunkNodeì˜ ë‚´ë¶€ ìƒíƒœë¥¼ ì½ê¸° ìœ„í•œ ë³€ìˆ˜ ì¶”ê°€ â–¼â–¼â–¼â–¼â–¼
+    private FieldInfo stateFieldInfo;
 
     void Start()
     {
+        InitializeReflection(); // ë¦¬í”Œë ‰ì…˜ ì´ˆê¸°í™” í˜¸ì¶œ ì¶”ê°€
         originPosition = transform.position;
         InvokeRepeating(nameof(CleanupFallenChunks), cleanupInterval, cleanupInterval);
 
         if (enableDebugLogs)
-            Debug.Log($"ChunkCleaner ½ÃÀÛ - {cleanupInterval}ÃÊ¸¶´Ù Á¤¸® ÀÛ¾÷ ¼öÇà");
+            Debug.Log($"ChunkCleaner ì‹œì‘ - {cleanupInterval}ì´ˆë§ˆë‹¤ ì •ë¦¬ ì‘ì—… ìˆ˜í–‰");
+    }
+
+    // â–¼â–¼â–¼â–¼â–¼ [ì‹ ê·œ] ChunkNodeì˜ private í•„ë“œì— ì ‘ê·¼í•˜ê¸° ìœ„í•œ ë¦¬í”Œë ‰ì…˜ ì´ˆê¸°í™” ë©”ì„œë“œ â–¼â–¼â–¼â–¼â–¼
+    void InitializeReflection()
+    {
+        try
+        {
+            System.Type chunkNodeType = typeof(ChunkNode);
+            // ChunkNode ìŠ¤í¬ë¦½íŠ¸ì˜ ë‚´ë¶€ ë³€ìˆ˜ì¸ '_state' í•„ë“œ ì •ë³´ë¥¼ ê°€ì ¸ì˜µë‹ˆë‹¤.
+            stateFieldInfo = chunkNodeType.GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ChunkCleaner] Reflection ì´ˆê¸°í™” ì‹¤íŒ¨: {e.Message}");
+        }
+    }
+
+    // â–¼â–¼â–¼â–¼â–¼ [ì‹ ê·œ] ë¦¬í”Œë ‰ì…˜ì„ í†µí•´ ChunkNodeì˜ í˜„ì¬ ìƒíƒœë¥¼ ê°€ì ¸ì˜¤ëŠ” ë©”ì„œë“œ â–¼â–¼â–¼â–¼â–¼
+    public ChunkNode.ChunkState GetChunkState(ChunkNode chunk)
+    {
+        if (stateFieldInfo == null || chunk == null)
+        {
+            // ë¦¬í”Œë ‰ì…˜ì— ì‹¤íŒ¨í•˜ë©´, ë¶€ëª¨ê°€ ì—†ëŠ”ì§€ë¥¼ ê¸°ì¤€ìœ¼ë¡œ ìƒíƒœë¥¼ ì¶”ì •í•©ë‹ˆë‹¤.
+            return chunk.transform.parent == null ? ChunkNode.ChunkState.Detached : ChunkNode.ChunkState.Connected;
+        }
+
+        try
+        {
+            object stateValue = stateFieldInfo.GetValue(chunk);
+            return (ChunkNode.ChunkState)stateValue;
+        }
+        catch (System.Exception)
+        {
+            // GetValue ë„ì¤‘ ì˜¤ë¥˜ ë°œìƒ ì‹œ ì•ˆì „í•œ ê¸°ë³¸ê°’ ë°˜í™˜
+            return chunk.transform.parent == null ? ChunkNode.ChunkState.Detached : ChunkNode.ChunkState.Connected;
+        }
     }
 
     /// <summary>
-    /// ¶³¾îÁø Á¶°¢µéÀ» Ã£¾Æ¼­ Á¤¸®
+    /// ë–¨ì–´ì§„ ì¡°ê°ë“¤ì„ ì°¾ì•„ì„œ ì •ë¦¬
     /// </summary>
     void CleanupFallenChunks()
     {
-        // ¾À¿¡¼­ ¸ğµç Á¶°¢ °ü·Ã ¿ÀºêÁ§Æ® Ã£±â
         List<GameObject> allChunkObjects = FindAllChunkObjects();
-
         if (allChunkObjects.Count == 0) return;
 
-        List<GameObject> chunksToDelete = new List<GameObject>();
+        int cleanedUpThisFrame = 0;
 
         foreach (GameObject chunkObj in allChunkObjects)
         {
-            if (chunkObj == null) continue;
+            if (chunkObj == null || !chunkObj.activeInHierarchy || vanishingChunks.Contains(chunkObj)) continue;
 
-            // »èÁ¦ Á¶°Ç Ã¼Å©
-            if (ShouldDeleteChunk(chunkObj))
+            if (ShouldCleanupChunk(chunkObj))
             {
-                chunksToDelete.Add(chunkObj);
+                if (enableDebugLogs)
+                    Debug.Log($"ì²­í¬ ë¹„í™œì„±í™” ì‹œì‘: {chunkObj.name}");
 
-                // ÇÑ ¹ø¿¡ ³Ê¹« ¸¹ÀÌ »èÁ¦ÇÏÁö ¾Êµµ·Ï Á¦ÇÑ
-                if (chunksToDelete.Count >= maxCleanupsPerFrame)
-                    break;
+                vanishingChunks.Add(chunkObj);
+                StartCoroutine(VanishChunk(chunkObj));
+                cleanedUpThisFrame++;
+
+                if (cleanedUpThisFrame >= maxCleanupsPerFrame) break;
             }
         }
 
-        // ½ÇÁ¦ »èÁ¦ ¼öÇà
-        foreach (GameObject chunk in chunksToDelete)
+        if (cleanedUpThisFrame > 0 && enableDebugLogs)
         {
-            if (enableDebugLogs)
-                Debug.Log($"Á¶°¢ Á¤¸®: {chunk.name}");
-
-            // Á¤Àû ÃßÀû¿¡¼­ Á¦°Å
-            if (staticChunks.ContainsKey(chunk))
-                staticChunks.Remove(chunk);
-
-            Destroy(chunk);
-        }
-
-        if (chunksToDelete.Count > 0 && enableDebugLogs)
-        {
-            Debug.Log($"Á¤¸® ¿Ï·á: {chunksToDelete.Count}°³ Á¶°¢ »èÁ¦µÊ (³²Àº Á¶°¢: {allChunkObjects.Count - chunksToDelete.Count}°³)");
+            Debug.Log($"ì •ë¦¬ ì‘ì—… ì™„ë£Œ: {cleanedUpThisFrame}ê°œ ì¡°ê° ë¹„í™œì„±í™” ì²˜ë¦¬ ì‹œì‘");
         }
     }
 
     /// <summary>
-    /// ¸ğµç Á¶°¢ ¿ÀºêÁ§Æ® Ã£±â (¾ÈÀüÇÑ ¹æ½Ä)
+    /// ì²­í¬ë¥¼ ëª‡ ì´ˆ ë’¤ì— ë¹„í™œì„±í™”ì‹œí‚¤ëŠ” ì½”ë£¨í‹´
+    /// </summary>
+    IEnumerator VanishChunk(GameObject chunk)
+    {
+        float delay = Random.Range(3f, 5f);
+        yield return new WaitForSeconds(delay);
+
+        if (chunk != null)
+        {
+            if (enableDebugLogs)
+                Debug.Log($"ì²­í¬ ë¹„í™œì„±í™”: {chunk.name}");
+
+            chunk.SetActive(false);
+            vanishingChunks.Remove(chunk);
+        }
+    }
+
+    // â–¼â–¼â–¼â–¼â–¼ [ìˆ˜ì •ë¨] Detached ìƒíƒœì¸ ì¡°ê°ë„ ì°¾ë„ë¡ ë¡œì§ ë³€ê²½ â–¼â–¼â–¼â–¼â–¼
+    /// <summary>
+    /// ëª¨ë“  ì •ë¦¬ ëŒ€ìƒ ì¡°ê° ì˜¤ë¸Œì íŠ¸ ì°¾ê¸° (ë¶€ëª¨ê°€ ì—†ê±°ë‚˜, ìƒíƒœê°€ Detachedì¸ ê²½ìš°)
     /// </summary>
     List<GameObject> FindAllChunkObjects()
     {
-        List<GameObject> chunkObjects = new List<GameObject>();
+        List<GameObject> detachedChunks = new List<GameObject>();
+        ChunkNode[] allChunksInScene = FindObjectsByType<ChunkNode>(FindObjectsSortMode.None);
 
-        // 1. ChunkNode ÄÄÆ÷³ÍÆ®°¡ ÀÖ´Â °Íµé¸¸ (°¡Àå ¾ÈÀüÇÔ)
-        ChunkNode[] allChunkNodes = FindObjectsByType<ChunkNode>(FindObjectsSortMode.None);
-        foreach (ChunkNode chunk in allChunkNodes)
+        foreach (ChunkNode chunk in allChunksInScene)
         {
-            if (chunk != null && chunk.gameObject != null &&
-                !chunk.transform.IsChildOf(transform)) // ºÎ¸ğ°¡ ÇöÀç ±¤¹° ºí·ÏÀÌ ¾Æ´Ñ °Íµé
+            if (chunk == null || chunk.gameObject == null) continue;
+
+            // ì¡°ê±´ 1: ë¶€ëª¨ê°€ ì—†ëŠ” ê²½ìš° (ê¸°ì¡´ ë¡œì§)
+            // ì¡°ê±´ 2: ChunkNodeì˜ ë‚´ë¶€ ìƒíƒœê°€ Detachedì¸ ê²½ìš° (ìƒˆë¡œìš´ ë¡œì§)
+            if (chunk.transform.parent == null || GetChunkState(chunk) == ChunkNode.ChunkState.Detached)
             {
-                chunkObjects.Add(chunk.gameObject);
+                detachedChunks.Add(chunk.gameObject);
             }
         }
-
-        // 3. Æ¯Á¤ ÅÂ±×°¡ ÀÖ´Â °Íµé (¾ÈÀüÇÔ)
-        GameObject[] stoneChunks = GameObject.FindGameObjectsWithTag("StoneChunk");
-        foreach (GameObject obj in stoneChunks)
-        {
-            if (obj != null && !obj.transform.IsChildOf(transform) &&
-                !chunkObjects.Contains(obj))
-            {
-                chunkObjects.Add(obj);
-            }
-        }
-
-        // 4. ¸Å¿ì ¾ö°İÇÑ Á¶°ÇÀÇ ÀÌ¸§ ±â¹İ °Ë»ö (LibreFracture »ı¼º ¿ÀºêÁ§Æ®¸¸)
-        GameObject[] allObjects = FindObjectsByType<GameObject>(FindObjectsSortMode.None);
-        foreach (GameObject obj in allObjects)
-        {
-            if (obj == null || chunkObjects.Contains(obj)) continue;
-
-            string nameToCheck = obj.name.ToLower();
-
-            // LibreFracture°¡ »ı¼ºÇÑ Á¶°¢µéÀÇ Æ¯Â¡ÀûÀÎ ÀÌ¸§ ÆĞÅÏ¸¸ ¸ÅÄ¡
-            bool isLibreFractureChunk = (nameToCheck.Contains("chunk") && nameToCheck.Contains("librefracture")) ||
-                                       (nameToCheck.Contains("fractured") && nameToCheck.Contains("piece")) ||
-                                       (nameToCheck.StartsWith("chunk_") && obj.GetComponent<Rigidbody>() != null);
-
-            bool isSmallObject = obj.transform.localScale.magnitude < 1.5f;
-            bool hasNoParent = obj.transform.parent == null;
-            bool isNotImportantObject = !obj.CompareTag("Player") &&
-                                       !obj.CompareTag("MainCamera") &&
-                                       !obj.CompareTag("UI") &&
-                                       obj != gameObject;
-
-            if (isLibreFractureChunk && isSmallObject && hasNoParent && isNotImportantObject)
-            {
-                chunkObjects.Add(obj);
-            }
-        }
-
-        return chunkObjects;
+        return detachedChunks;
     }
 
     /// <summary>
-    /// Á¶°¢À» »èÁ¦ÇØ¾ß ÇÏ´ÂÁö ÆÇ´Ü
+    /// ì¡°ê°ì„ ì •ë¦¬í•´ì•¼ í•˜ëŠ”ì§€ íŒë‹¨
     /// </summary>
-    bool ShouldDeleteChunk(GameObject chunk)
+    bool ShouldCleanupChunk(GameObject chunk)
     {
-        if (chunk == null) return true;
-
         Vector3 chunkPosition = chunk.transform.position;
 
-        // 1. °Å¸® Ã¼Å© - ¿øÁ¡¿¡¼­ ³Ê¹« ¸Ö¸® ¶³¾îÁü
+        if (chunkPosition.y < minGroundHeight)
+        {
+            if (enableDebugLogs)
+                Debug.Log($"ë°”ë‹¥ ì•„ë˜ë¡œ ë–¨ì–´ì ¸ ì •ë¦¬: {chunk.name} (y: {chunkPosition.y:F1})");
+            return true;
+        }
+
         float distanceFromOrigin = Vector3.Distance(chunkPosition, originPosition);
         if (distanceFromOrigin > maxDistanceFromOrigin)
         {
             if (enableDebugLogs)
-                Debug.Log($"°Å¸® ÃÊ°ú·Î »èÁ¦: {chunk.name} ({distanceFromOrigin:F1}m)");
+                Debug.Log($"ê±°ë¦¬ ì´ˆê³¼ë¡œ ì •ë¦¬: {chunk.name} ({distanceFromOrigin:F1}m)");
             return true;
         }
 
-        // 2. ³ôÀÌ Ã¼Å© - ¹Ù´Ú ¾Æ·¡·Î ¶³¾îÁü
-        if (chunkPosition.y < minGroundHeight)
-        {
-            if (enableDebugLogs)
-                Debug.Log($"¹Ù´Ú ¾Æ·¡·Î ¶³¾îÁ® »èÁ¦: {chunk.name} (y: {chunkPosition.y:F1})");
-            return true;
-        }
-
-        // 3. Á¤Àû »óÅÂ Ã¼Å© - ¿À·§µ¿¾È ¿òÁ÷ÀÌÁö ¾ÊÀ½
         Rigidbody rb = chunk.GetComponent<Rigidbody>();
         if (rb != null)
         {
-            bool isStatic = rb.linearVelocity.magnitude < minVelocityThreshold;
-
-            if (isStatic)
+            if (rb.linearVelocity.magnitude < minVelocityThreshold && rb.angularVelocity.magnitude < minVelocityThreshold)
             {
-                // Á¤Àû »óÅÂ ½Ã°£ ÃßÀû
                 if (!staticChunks.ContainsKey(chunk))
                 {
                     staticChunks[chunk] = Time.time;
                 }
-                else
+                else if (Time.time - staticChunks[chunk] > staticTimeThreshold)
                 {
-                    float staticDuration = Time.time - staticChunks[chunk];
-                    if (staticDuration > staticTimeThreshold)
-                    {
-                        if (enableDebugLogs)
-                            Debug.Log($"Á¤Àû »óÅÂ·Î »èÁ¦: {chunk.name} ({staticDuration:F1}ÃÊ µ¿¾È Á¤Áö)");
-                        return true;
-                    }
+                    if (enableDebugLogs)
+                        Debug.Log($"ì •ì  ìƒíƒœë¡œ ì •ë¦¬: {chunk.name}");
+                    staticChunks.Remove(chunk);
+                    return true;
                 }
             }
             else
             {
-                // ´Ù½Ã ¿òÁ÷ÀÌ±â ½ÃÀÛÇÏ¸é Á¤Àû ÃßÀû¿¡¼­ Á¦°Å
                 if (staticChunks.ContainsKey(chunk))
                     staticChunks.Remove(chunk);
             }
         }
-
         return false;
     }
 
     /// <summary>
-    /// ¼öµ¿À¸·Î Áï½Ã Á¤¸® ¼öÇà
+    /// ëª¨ë“  ë–¨ì–´ì§„ ì¡°ê° ê°•ì œ ë¹„í™œì„±í™”
     /// </summary>
-    [ContextMenu("Áï½Ã Á¶°¢ Á¤¸®")]
-    public void CleanupNow()
-    {
-        Debug.Log("¼öµ¿ Á¤¸® ½ÃÀÛ...");
-        CleanupFallenChunks();
-    }
-
-    /// <summary>
-    /// ¸ğµç ¶³¾îÁø Á¶°¢ °­Á¦ »èÁ¦
-    /// </summary>
-    [ContextMenu("¸ğµç Á¶°¢ °­Á¦ »èÁ¦")]
-    public void ForceDeleteAllChunks()
+    [ContextMenu("ëª¨ë“  ì¡°ê° ê°•ì œ ë¹„í™œì„±í™”")]
+    public void ForceDeactivateAllChunks()
     {
         List<GameObject> allChunks = FindAllChunkObjects();
-
         foreach (GameObject chunk in allChunks)
         {
-            if (chunk != null)
+            if (chunk != null && chunk.activeInHierarchy)
             {
-                Destroy(chunk);
+                chunk.SetActive(false);
             }
         }
-
         staticChunks.Clear();
-        Debug.Log($"°­Á¦ »èÁ¦ ¿Ï·á: {allChunks.Count}°³ Á¶°¢ »èÁ¦µÊ");
-    }
-
-    /// <summary>
-    /// ÇöÀç ¶³¾îÁø Á¶°¢ °³¼ö È®ÀÎ
-    /// </summary>
-    [ContextMenu("¶³¾îÁø Á¶°¢ °³¼ö È®ÀÎ")]
-    public void CountFallenChunks()
-    {
-        List<GameObject> fallenChunks = FindAllChunkObjects();
-        Debug.Log($"ÇöÀç ¶³¾îÁø Á¶°¢: {fallenChunks.Count}°³");
-        Debug.Log($"Á¤Àû ÃßÀû ÁßÀÎ Á¶°¢: {staticChunks.Count}°³");
-    }
-
-    /// <summary>
-    /// µğ¹ö±× ½Ã°¢È­
-    /// </summary>
-    void OnDrawGizmosSelected()
-    {
-        if (!enableDebugVisualization) return;
-
-        // Á¤¸® ¹üÀ§ Ç¥½Ã
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(transform.position, maxDistanceFromOrigin);
-
-        // ¹Ù´Ú ³ôÀÌ Ç¥½Ã
-        Gizmos.color = Color.red;
-        Vector3 groundPlane = transform.position;
-        groundPlane.y = minGroundHeight;
-        Gizmos.DrawWireCube(groundPlane, new Vector3(maxDistanceFromOrigin * 2, 0.1f, maxDistanceFromOrigin * 2));
+        vanishingChunks.Clear();
+        StopAllCoroutines();
+        Debug.Log($"ê°•ì œ ë¹„í™œì„±í™” ì™„ë£Œ: {allChunks.Count}ê°œ ì¡°ê° ë¹„í™œì„±í™”ë¨");
     }
 
     void OnDestroy()
     {
-        // ÀÚµ¿ Á¤¸® ÁßÁö
         CancelInvoke(nameof(CleanupFallenChunks));
+        StopAllCoroutines();
+    }
+
+    void OnDrawGizmosSelected()
+    {
+        if (!enableDebugVisualization) return;
+
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(transform.position, maxDistanceFromOrigin);
+
+        Gizmos.color = Color.red;
+        Vector3 groundPlane = transform.position;
+        groundPlane.y = minGroundHeight;
+        Gizmos.DrawWireCube(groundPlane, new Vector3(maxDistanceFromOrigin * 2, 0.1f, maxDistanceFromOrigin * 2));
     }
 }

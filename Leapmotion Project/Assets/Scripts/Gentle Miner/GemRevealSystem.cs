@@ -140,8 +140,8 @@ public class GemRevealSystem : MonoBehaviour
             }
         }
 
-        // 3단계: 보석을 잠시 보여주기
-        yield return new WaitForSeconds(gemDisplayTime);
+        // 3단계: [수정] 보석을 한 바퀴 회전시키며 보여주기
+        yield return StartCoroutine(RotateGemSuccess());
 
         // 4단계: 보석 인스턴스 삭제
         DestroyCurrentGemInstance();
@@ -165,8 +165,8 @@ public class GemRevealSystem : MonoBehaviour
         // 2단계: 보석 생성 및 등장 효과
         yield return StartCoroutine(SpawnGemWithEffect(gemQuality));
 
-        // 3단계: 성공 회전 연출
-        yield return StartCoroutine(RotateGemSuccess());
+        // 3단계: [수정] 100% 완료와 동일한 완벽 회전 연출 실행
+        yield return StartCoroutine(RotateGemPerfect());
 
         // 4단계: 성공 메시지 표시
         yield return StartCoroutine(ShowSuccessMessage());

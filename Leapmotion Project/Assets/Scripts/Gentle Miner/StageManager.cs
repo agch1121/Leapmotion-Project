@@ -332,14 +332,6 @@ public class StageManager : MonoBehaviour
     }
     void CleanupFallenChunks()
     {
-        // ChunkCleaner가 있으면 사용
-        ChunkCleaner cleaner = FindFirstObjectByType<ChunkCleaner>();
-        if (cleaner != null)
-        {
-            cleaner.ForceDeleteAllChunks();
-            return;
-        }
-
         // 수동으로 정리
         ChunkNode[] fallenChunks = FindObjectsByType<ChunkNode>(FindObjectsSortMode.None);
         foreach (ChunkNode chunk in fallenChunks)

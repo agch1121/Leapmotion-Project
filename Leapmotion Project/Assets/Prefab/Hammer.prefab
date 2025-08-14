@@ -16,6 +16,10 @@ PrefabInstance:
       propertyPath: m_TagString
       value: Hammer
       objectReference: {fileID: 0}
+    - target: {fileID: 100004, guid: 0c4e05d53a1b01640a220879125d4fd1, type: 3}
+      propertyPath: m_Name
+      value: HammerTip
+      objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 0c4e05d53a1b01640a220879125d4fd1, type: 3}
       propertyPath: m_LocalScale.x
       value: 0.3
@@ -34,7 +38,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 0c4e05d53a1b01640a220879125d4fd1, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 1.156
+      value: 1.1495
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: 0c4e05d53a1b01640a220879125d4fd1, type: 3}
       propertyPath: m_LocalPosition.z
@@ -71,6 +75,26 @@ PrefabInstance:
     - target: {fileID: 400000, guid: 0c4e05d53a1b01640a220879125d4fd1, type: 3}
       propertyPath: m_ConstrainProportionsScale
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 400002, guid: 0c4e05d53a1b01640a220879125d4fd1, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 135
+      objectReference: {fileID: 0}
+    - target: {fileID: 400002, guid: 0c4e05d53a1b01640a220879125d4fd1, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 400002, guid: 0c4e05d53a1b01640a220879125d4fd1, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.425
+      objectReference: {fileID: 0}
+    - target: {fileID: 400004, guid: 0c4e05d53a1b01640a220879125d4fd1, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 400004, guid: 0c4e05d53a1b01640a220879125d4fd1, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.569
       objectReference: {fileID: 0}
     - target: {fileID: 6400000, guid: 0c4e05d53a1b01640a220879125d4fd1, type: 3}
       propertyPath: m_Convex
@@ -117,8 +141,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.09268512, y: 0.047868315, z: 0.83864397}
-  m_Center: {x: -0.001403292, y: 0.001780279, z: -0.07537916}
+  m_Size: {x: 0.09268512, y: 0.047868315, z: 1.1895815}
+  m_Center: {x: -0.001403292, y: 0.0017802789, z: -0.110078596}
 --- !u!54 &3864098920084914592
 Rigidbody:
   m_ObjectHideFlags: 0

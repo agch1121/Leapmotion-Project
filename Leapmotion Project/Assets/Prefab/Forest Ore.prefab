@@ -3500,9 +3500,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   totalMass: 100
-  jointBreakForce: 50
+  jointBreakForce: 75
   anchored: 1
-  freezeConnectedChunks: 0
+  freezeConnectedChunks: 1
   startAsleep: 1
 --- !u!64 &547089391315179718
 MeshCollider:
@@ -3541,10 +3541,10 @@ MonoBehaviour:
   gems:
   - gemObject: {fileID: 8427302091761681971}
     gemName: "\uC5D0\uBA54\uB784\uB4DC"
-    damageThreshold: 0
-    protectionRadius: 0
-    freeHitCount: 0
-    currentCondition: 0
+    damageThreshold: 30
+    protectionRadius: 0.4
+    freeHitCount: 1
+    currentCondition: 100
     perfectMaterial: {fileID: 0}
     damagedMaterial: {fileID: 0}
     heavilyDamagedMaterial: {fileID: 0}
@@ -3570,7 +3570,7 @@ MonoBehaviour:
   currentActiveChunks: 0
   currentRemovedChunks: 0
   miningProgress: 0
-  targetChunkCount: 100
+  targetChunkCount: 30
   useCustomTarget: 1
   enableDebugLogs: 1
   enableProgressDebug: 1
@@ -3589,9 +3589,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cleanupInterval: 2
-  maxDistanceFromOrigin: 10
-  minGroundHeight: -5
-  staticTimeThreshold: 3
+  maxDistanceFromOrigin: 5
+  minGroundHeight: 0
+  staticTimeThreshold: 5
   minVelocityThreshold: 0.1
   maxCleanupsPerFrame: 5
   enableDebugLogs: 1
@@ -3617,7 +3617,7 @@ MonoBehaviour:
   miningSound: {fileID: 0}
   chunkFallSounds: []
   miningForceIntensity: 20
-  hardness: 1
+  hardness: 10
   gemQuality: 1
 --- !u!1 &3519386886588860328
 GameObject:

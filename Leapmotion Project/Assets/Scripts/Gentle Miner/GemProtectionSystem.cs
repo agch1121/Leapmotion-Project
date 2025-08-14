@@ -25,49 +25,44 @@ public class GemProtectionSystem : MonoBehaviour
         public Material heavilyDamagedMaterial;
 
         // 내부 상태 변수들
-        [HideInInspector] public int receivedHits = 0; // 받은 충격 횟수
-        [HideInInspector] public bool isProtected = true; // 현재 보호 상태인지
-        [HideInInspector] public bool isDestroyed = false; // 완전 파괴 여부
+        [HideInInspector] public int receivedHits = 0;
+        [HideInInspector] public bool isProtected = true;
+        [HideInInspector] public bool isDestroyed = false;
     }
 
     [Header("보석 목록")]
     public GemData[] gems;
 
     [Header("파괴 연출 시스템")]
-    public GemRevealSystem gemRevealSystem; // GemRevealSystem 참조
+    public GemRevealSystem gemRevealSystem;
 
     [Header("디버그")]
     public bool showProtectionRadius = true;
     public bool enableDebugLogs = true;
 
     [Header("이벤트 시스템")]
-    public System.Action OnAnyGemDestroyed; // 보석 파괴 시 발생하는 이벤트
-    public System.Action<GemData> OnSpecificGemDestroyed; // 특정 보석 파괴 시 발생
+    public System.Action OnAnyGemDestroyed;
+    public System.Action<GemData> OnSpecificGemDestroyed;
+    public System.Action<GemData> OnGemConditionChanged; // [추가] 보석 상태 변경 이벤트
 
     private void Start()
     {
         InitializeGems();
 
-        // GemRevealSystem이 없으면 찾기
         if (gemRevealSystem == null)
         {
             gemRevealSystem = FindFirstObjectByType<GemRevealSystem>();
         }
     }
 
-    /// <summary>
-    /// 모든 보석 초기화
-    /// </summary>
     private void InitializeGems()
     {
         foreach (GemData gem in gems)
         {
             if (gem.gemObject != null)
             {
-                // 보석에 태그 설정
                 gem.gemObject.tag = "Gem";
 
-                // Rigidbody 설정 (Kinematic)
                 Rigidbody gemRb = gem.gemObject.GetComponent<Rigidbody>();
                 if (gemRb == null)
                 {
@@ -75,13 +70,11 @@ public class GemProtectionSystem : MonoBehaviour
                 }
                 gemRb.isKinematic = true;
 
-                // 초기 상태 설정
                 gem.receivedHits = 0;
                 gem.isProtected = true;
                 gem.currentCondition = 100f;
                 gem.isDestroyed = false;
 
-                // 초기 머티리얼 적용
                 UpdateGemVisuals(gem);
 
                 if (enableDebugLogs)
@@ -90,9 +83,6 @@ public class GemProtectionSystem : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 채굴 충격이 보석에 영향을 주는지 확인 (Test.cs의 MineAtPoint에서 호출)
-    /// </summary>
     public void CheckMiningImpactOnGems(Vector3 miningPoint, float impactForce)
     {
         foreach (GemData gem in gems)
@@ -101,7 +91,6 @@ public class GemProtectionSystem : MonoBehaviour
 
             float distance = Vector3.Distance(gem.gemObject.transform.position, miningPoint);
 
-            // 보석 보호 영역 내에서 채굴이 발생했는지 확인
             if (distance <= gem.protectionRadius)
             {
                 ProcessGemImpact(gem, impactForce, distance);
@@ -109,12 +98,8 @@ public class GemProtectionSystem : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 보석에 대한 충격 처리
-    /// </summary>
     private void ProcessGemImpact(GemData gem, float impactForce, float distance)
     {
-        // 충격 강도가 임계값 미만이면 무시
         if (impactForce < gem.damageThreshold)
         {
             if (enableDebugLogs)
@@ -124,14 +109,12 @@ public class GemProtectionSystem : MonoBehaviour
 
         gem.receivedHits++;
 
-        // 거리에 따른 충격 감소 계산
         float distanceMultiplier = 1f - (distance / gem.protectionRadius);
         float actualImpact = impactForce * distanceMultiplier;
 
         if (enableDebugLogs)
             Debug.Log($"{gem.gemName}: 충격 감지! 충격 #{gem.receivedHits}, 실제충격: {actualImpact:F1}");
 
-        // 보호 충격 횟수 이하면 무시 (보호막 역할)
         if (gem.receivedHits <= gem.freeHitCount)
         {
             ShowProtectionEffect(gem);
@@ -140,30 +123,24 @@ public class GemProtectionSystem : MonoBehaviour
             return;
         }
 
-        // 보호 해제 및 손상 적용
         gem.isProtected = false;
         ApplyGemDamage(gem, actualImpact);
     }
 
-    /// <summary>
-    /// 보석에 손상 적용
-    /// </summary>
     private void ApplyGemDamage(GemData gem, float damage)
     {
-        // 손상 계산 (기본적으로 충격의 2배만큼 상태 감소)
         float damageAmount = damage * 2f;
         gem.currentCondition = Mathf.Max(0f, gem.currentCondition - damageAmount);
 
         if (enableDebugLogs)
             Debug.Log($"{gem.gemName} 손상! 상태: {gem.currentCondition:F1}% (손상량: -{damageAmount:F1})");
 
-        // 시각적 업데이트
         UpdateGemVisuals(gem);
-
-        // 손상 효과
         ShowDamageEffect(gem);
 
-        // 완전 파괴 체크
+        // [추가] 보석 상태 변경 이벤트 호출
+        OnGemConditionChanged?.Invoke(gem);
+
         if (gem.currentCondition <= 0f && !gem.isDestroyed)
         {
             gem.isDestroyed = true;
@@ -172,9 +149,6 @@ public class GemProtectionSystem : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 보석 시각적 상태 업데이트
-    /// </summary>
     private void UpdateGemVisuals(GemData gem)
     {
         if (gem.gemObject == null) return;
@@ -182,7 +156,6 @@ public class GemProtectionSystem : MonoBehaviour
         MeshRenderer renderer = gem.gemObject.GetComponent<MeshRenderer>();
         if (renderer == null) return;
 
-        // 상태에 따른 머티리얼 변경
         if (gem.currentCondition > 70f && gem.perfectMaterial != null)
         {
             renderer.material = gem.perfectMaterial;
@@ -197,54 +170,37 @@ public class GemProtectionSystem : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 보호막 효과 표시
-    /// </summary>
     private void ShowProtectionEffect(GemData gem)
     {
-        // 보호막 시각 효과 (파란색 구체)
         StartCoroutine(CreateProtectionEffect(gem.gemObject.transform.position));
     }
 
-    /// <summary>
-    /// 손상 효과 표시
-    /// </summary>
     private void ShowDamageEffect(GemData gem)
     {
-        // 손상 시각 효과 (빨간색 파티클)
         StartCoroutine(CreateDamageEffect(gem.gemObject.transform.position));
     }
 
-    /// <summary>
-    /// 보석 완전 파괴 처리 - 즉시 연출 시작!
-    /// </summary>
     private void OnGemDestroyed(GemData gem)
     {
-        // 게임이 시작되지 않았다면 연출하지 않음 (미리보기 중)
-        // 수정 전: MineralBlock testScript = GetComponent<MineralBlock>();
-        // 수정 전: if (testScript != null && !testScript.IsGameStarted) return;
-
-        // 수정 후: GameManager를 참조하도록 변경
         GameManager gameManager = FindFirstObjectByType<GameManager>();
         if (gameManager != null && !gameManager.IsGameStarted) return;
 
-        // 즉시 GemRevealSystem의 파괴 연출 호출
         if (gemRevealSystem != null)
         {
             gemRevealSystem.StartGemDestruction();
         }
 
-        // 파괴 효과
         StartCoroutine(CreateDestructionEffect(gem.gemObject.transform.position));
 
         OnSpecificGemDestroyed?.Invoke(gem);
         OnAnyGemDestroyed?.Invoke();
+
+        // [추가] 보석 파괴 시에도 상태 변경 이벤트 호출
+        OnGemConditionChanged?.Invoke(gem);
+
         Debug.Log($"보석 파괴 이벤트 발생: {gem.gemName}");
     }
 
-    /// <summary>
-    /// 보호막 시각 효과 코루틴
-    /// </summary>
     private IEnumerator CreateProtectionEffect(Vector3 position)
     {
         GameObject shield = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -252,11 +208,10 @@ public class GemProtectionSystem : MonoBehaviour
         shield.transform.localScale = Vector3.one * 0.3f;
 
         MeshRenderer shieldRenderer = shield.GetComponent<MeshRenderer>();
-        shieldRenderer.material.color = new Color(0f, 0.5f, 1f, 0.3f); // 반투명 파란색
+        shieldRenderer.material.color = new Color(0f, 0.5f, 1f, 0.3f);
 
-        Destroy(shield.GetComponent<Collider>()); // 콜라이더 제거
+        Destroy(shield.GetComponent<Collider>());
 
-        // 확대 애니메이션
         float elapsed = 0f;
         float duration = 1f;
         Vector3 startScale = shield.transform.localScale;
@@ -278,12 +233,8 @@ public class GemProtectionSystem : MonoBehaviour
         Destroy(shield);
     }
 
-    /// <summary>
-    /// 손상 효과 코루틴
-    /// </summary>
     private IEnumerator CreateDamageEffect(Vector3 position)
     {
-        // 작은 빨간 파티클들
         for (int i = 0; i < 8; i++)
         {
             GameObject particle = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -303,12 +254,8 @@ public class GemProtectionSystem : MonoBehaviour
         yield return null;
     }
 
-    /// <summary>
-    /// 파괴 효과 코루틴
-    /// </summary>
     private IEnumerator CreateDestructionEffect(Vector3 position)
     {
-        // 큰 폭발 효과
         for (int i = 0; i < 15; i++)
         {
             GameObject fragment = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -317,7 +264,7 @@ public class GemProtectionSystem : MonoBehaviour
             fragment.transform.rotation = Random.rotation;
 
             MeshRenderer fragmentRenderer = fragment.GetComponent<MeshRenderer>();
-            fragmentRenderer.material.color = new Color(1f, 0.3f, 0.3f); // 붉은색 파편
+            fragmentRenderer.material.color = new Color(1f, 0.3f, 0.3f);
 
             Rigidbody fragmentRb = fragment.AddComponent<Rigidbody>();
             fragmentRb.AddForce(Random.insideUnitSphere * 8f, ForceMode.Impulse);
@@ -329,29 +276,20 @@ public class GemProtectionSystem : MonoBehaviour
         yield return null;
     }
 
-    /// <summary>
-    /// 현재 모든 보석의 상태 반환 (점수 시스템용)
-    /// </summary>
     public GemData[] GetAllGems()
     {
         return gems;
     }
 
-    /// <summary>
-    /// 특정 보석의 점수 계산
-    /// </summary>
     public int CalculateGemScore(GemData gem)
     {
         if (gem.isDestroyed) return 0;
-        if (gem.currentCondition >= 90f) return 100; // 완벽한 보석
-        if (gem.currentCondition >= 70f) return 70;  // 약간 손상
-        if (gem.currentCondition >= 30f) return 30;  // 많이 손상
-        return 10; // 거의 파괴 직전
+        if (gem.currentCondition >= 90f) return 100;
+        if (gem.currentCondition >= 70f) return 70;
+        if (gem.currentCondition >= 30f) return 30;
+        return 10;
     }
 
-    /// <summary>
-    /// 보석이 하나라도 완전히 파괴되었는지 확인
-    /// </summary>
     public bool HasAnyGemDestroyed()
     {
         foreach (GemData gem in gems)
@@ -361,9 +299,6 @@ public class GemProtectionSystem : MonoBehaviour
         return false;
     }
 
-    /// <summary>
-    /// 디버그용: 보석 상태 출력
-    /// </summary>
     [ContextMenu("보석 상태 출력")]
     public void PrintGemStatus()
     {
@@ -380,9 +315,6 @@ public class GemProtectionSystem : MonoBehaviour
         Debug.Log("==============");
     }
 
-    /// <summary>
-    /// 테스트용: 특정 보석에 강제 손상 적용
-    /// </summary>
     [ContextMenu("첫 번째 보석 강제 파괴 테스트")]
     public void TestForceDestroyFirstGem()
     {
@@ -401,9 +333,6 @@ public class GemProtectionSystem : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 테스트용: 첫 번째 보석에 연속 손상 적용
-    /// </summary>
     [ContextMenu("첫 번째 보석에 연속 손상 테스트")]
     public void TestContinuousDamageFirstGem()
     {
@@ -411,12 +340,11 @@ public class GemProtectionSystem : MonoBehaviour
         {
             Debug.Log("첫 번째 보석에 연속 손상 적용 시작");
 
-            // 강한 충격을 여러 번 적용하여 0점까지 만들기
             Vector3 gemPosition = gems[0].gemObject.transform.position;
 
             for (int i = 0; i < 10; i++)
             {
-                CheckMiningImpactOnGems(gemPosition, 30f); // 강한 충격
+                CheckMiningImpactOnGems(gemPosition, 30f);
 
                 if (gems[0].isDestroyed)
                 {
@@ -435,9 +363,6 @@ public class GemProtectionSystem : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 시스템 연결 상태 확인
-    /// </summary>
     [ContextMenu("시스템 연결 상태 확인")]
     public void CheckSystemConnections()
     {
@@ -459,9 +384,6 @@ public class GemProtectionSystem : MonoBehaviour
         Debug.Log("=====================");
     }
 
-    /// <summary>
-    /// Gizmos로 보호 영역 표시
-    /// </summary>
     private void OnDrawGizmosSelected()
     {
         if (!showProtectionRadius) return;
@@ -473,7 +395,6 @@ public class GemProtectionSystem : MonoBehaviour
                 Gizmos.color = gem.isProtected ? Color.blue : Color.red;
                 Gizmos.DrawWireSphere(gem.gemObject.transform.position, gem.protectionRadius);
 
-                // 보석 이름 표시
 #if UNITY_EDITOR
                 UnityEditor.Handles.Label(gem.gemObject.transform.position + Vector3.up * 0.3f, gem.gemName);
 #endif

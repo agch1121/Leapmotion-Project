@@ -12761,7 +12761,7 @@ MonoBehaviour:
   gems:
   - gemObject: {fileID: 1060411647888881698}
     gemName: Gem
-    damageThreshold: 15
+    damageThreshold: 30
     protectionRadius: 0.4
     freeHitCount: 1
     currentCondition: 100
@@ -12790,6 +12790,8 @@ MonoBehaviour:
   currentActiveChunks: 0
   currentRemovedChunks: 0
   miningProgress: 0
+  targetChunkCount: 80
+  useCustomTarget: 1
   enableDebugLogs: 1
   enableProgressDebug: 1
   autoRefreshCount: 1
@@ -12835,7 +12837,7 @@ MonoBehaviour:
   miningSound: {fileID: 0}
   chunkFallSounds: []
   miningForceIntensity: 20
-  hardness: 1
+  hardness: 10
   gemQuality: 1
 --- !u!1 &5249048022537011390
 GameObject:
