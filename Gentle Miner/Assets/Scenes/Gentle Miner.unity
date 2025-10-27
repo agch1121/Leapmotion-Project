@@ -12805,7 +12805,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3910604352585490043, guid: a62800902f317f14abadb0d43bfaca8f, type: 3}
       propertyPath: stageConfigs.Array.data[1].damageThreshold
-      value: 17
+      value: 15
       objectReference: {fileID: 0}
     - target: {fileID: 3910604352585490043, guid: a62800902f317f14abadb0d43bfaca8f, type: 3}
       propertyPath: stageConfigs.Array.data[1].jointBreakForce
@@ -12833,7 +12833,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3910604352585490043, guid: a62800902f317f14abadb0d43bfaca8f, type: 3}
       propertyPath: stageConfigs.Array.data[1].gemProtectionRadius
-      value: 0.5
+      value: 0.75
       objectReference: {fileID: 0}
     - target: {fileID: 3910604352585490043, guid: a62800902f317f14abadb0d43bfaca8f, type: 3}
       propertyPath: stageConfigs.Array.data[2].gemProtectionRadius
